@@ -3,6 +3,7 @@ import { Command } from 'commander';
 import type { CliCommand } from './command/cli-command.js';
 import { ConfigCommand } from './command/config/config-command.js';
 import { InitCommand } from './command/init/init-command.js';
+import { ResetCommand } from './command/reset/reset-command.js';
 import { AgkitPaths } from './config/agkit-paths.js';
 import { UserConfigStore } from './config/user-config-store.js';
 import { CliError } from './error/cli-error.js';
@@ -23,6 +24,7 @@ const harnessRegistry = new HarnessRegistry([
 
 const configCommand = new ConfigCommand(configStore, repositoryCache);
 const initCommand = new InitCommand(harnessRegistry);
+const resetCommand = new ResetCommand(paths);
 const interactiveRunner = new InteractiveRunner(
   configStore,
   configCommand,
@@ -31,7 +33,7 @@ const interactiveRunner = new InteractiveRunner(
   initCommand,
 );
 
-const commands: readonly CliCommand[] = [configCommand, initCommand];
+const commands: readonly CliCommand[] = [configCommand, initCommand, resetCommand];
 
 const program = new Command();
 

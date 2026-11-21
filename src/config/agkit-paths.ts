@@ -12,7 +12,11 @@ export class AgkitPaths {
     return join(this.rootDir, 'config.json');
   }
 
+  get cacheDir(): string {
+    return join(this.rootDir, 'cache');
+  }
+
   get repoCacheDir(): string {
-    return join(this.rootDir, 'cache', 'repo');
+    return join(this.cacheDir, 'repo');
   }
 }
