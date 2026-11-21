@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ConfigCommand } from '../../src/command/config/config-command.js';
 import { InitCommand } from '../../src/command/init/init-command.js';
 import { ListCommand } from '../../src/command/list/list-command.js';
+import { type ConflictResolution, SyncCommand } from '../../src/command/sync/sync-command.js';
 import { AgkitPaths } from '../../src/config/agkit-paths.js';
 import { UserConfigStore } from '../../src/config/user-config-store.js';
 import { GitRepositoryCache } from '../../src/git/git-repository-cache.js';
@@ -13,6 +14,8 @@ import { AntigravityHarness } from '../../src/harness/antigravity/antigravity-ha
 import { HarnessRegistry } from '../../src/harness/harness-registry.js';
 import { OpencodeHarness } from '../../src/harness/opencode/opencode-harness.js';
 import { InteractiveRunner } from '../../src/interactive/interactive-runner.js';
+import { ContentHasher } from '../../src/manifest/content-hasher.js';
+import { ProjectManifestStore } from '../../src/manifest/project-manifest-store.js';
 import type { PromptChoice, PromptService } from '../../src/prompt/prompt-service.js';
 import { ModuleComposer } from '../../src/template/module-composer.js';
 import { TemplateRepositoryLoader } from '../../src/template/template-repository-loader.js';
@@ -60,6 +63,7 @@ describe('InteractiveRunner', () => {
   let configCommand: ConfigCommand;
   let listCommand: ListCommand;
   let initCommand: InitCommand;
+  let syncCommand: SyncCommand;
   let remoteRepoUrl: string;
 
   beforeEach(async () => {
@@ -67,6 +71,9 @@ describe('InteractiveRunner', () => {
     const paths = new AgkitPaths(join(tempDir, '.agkit'));
     const repositoryCache = new GitRepositoryCache(paths);
     const templateLoader = new TemplateRepositoryLoader();
+    const moduleComposer = new ModuleComposer();
+    const manifestStore = new ProjectManifestStore();
+    const contentHasher = new ContentHasher();
 
     configStore = new UserConfigStore(paths);
     configCommand = new ConfigCommand(configStore, repositoryCache);
@@ -76,7 +83,17 @@ describe('InteractiveRunner', () => {
       configStore,
       repositoryCache,
       templateLoader,
-      new ModuleComposer(),
+      moduleComposer,
+      manifestStore,
+      contentHasher,
+    );
+    syncCommand = new SyncCommand(
+      harnessRegistry,
+      repositoryCache,
+      templateLoader,
+      moduleComposer,
+      manifestStore,
+      contentHasher,
     );
     remoteRepoUrl = await createLocalRemoteRepo(tempDir);
   });
@@ -114,6 +131,9 @@ describe('InteractiveRunner', () => {
         capturedHarnesses = choices;
         return 'antigravity';
       },
+      async resolveConflict(): Promise<ConflictResolution> {
+        throw new Error('resolveConflict should not be called');
+      },
     };
 
     const runner = new InteractiveRunner(
@@ -123,6 +143,7 @@ describe('InteractiveRunner', () => {
       harnessRegistry,
       stubPrompt,
       initCommand,
+      syncCommand,
     );
 
     await runner.run(projectDir);
@@ -133,6 +154,7 @@ describe('InteractiveRunner', () => {
     });
     expect(capturedActions.map((c) => c.label)).toEqual([
       'Initialize a project',
+      'Synchronize templates',
       'Configure template repository',
       'Exit',
     ]);
@@ -174,6 +196,9 @@ describe('InteractiveRunner', () => {
       async selectHarness(): Promise<string> {
         throw new Error('selectHarness should not be called');
       },
+      async resolveConflict(): Promise<ConflictResolution> {
+        throw new Error('resolveConflict should not be called');
+      },
     };
 
     const runner = new InteractiveRunner(
@@ -183,6 +208,7 @@ describe('InteractiveRunner', () => {
       harnessRegistry,
       stubPrompt,
       initCommand,
+      syncCommand,
     );
 
     await runner.run(tempDir);
@@ -213,6 +239,9 @@ describe('InteractiveRunner', () => {
       async selectHarness(): Promise<string> {
         throw new Error('selectHarness should not be called');
       },
+      async resolveConflict(): Promise<ConflictResolution> {
+        throw new Error('resolveConflict should not be called');
+      },
     };
 
     const runner = new InteractiveRunner(
@@ -222,6 +251,7 @@ describe('InteractiveRunner', () => {
       harnessRegistry,
       stubPrompt,
       initCommand,
+      syncCommand,
     );
 
     await expect(runner.run(tempDir)).resolves.toBeUndefined();

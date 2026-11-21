@@ -5,6 +5,7 @@ import { ConfigCommand } from './command/config/config-command.js';
 import { InitCommand } from './command/init/init-command.js';
 import { ListCommand } from './command/list/list-command.js';
 import { ResetCommand } from './command/reset/reset-command.js';
+import { SyncCommand } from './command/sync/sync-command.js';
 import { AgkitPaths } from './config/agkit-paths.js';
 import { UserConfigStore } from './config/user-config-store.js';
 import { CliError } from './error/cli-error.js';
@@ -13,6 +14,8 @@ import { AntigravityHarness } from './harness/antigravity/antigravity-harness.js
 import { HarnessRegistry } from './harness/harness-registry.js';
 import { OpencodeHarness } from './harness/opencode/opencode-harness.js';
 import { InteractiveRunner } from './interactive/interactive-runner.js';
+import { ContentHasher } from './manifest/content-hasher.js';
+import { ProjectManifestStore } from './manifest/project-manifest-store.js';
 import { InquirerPromptService } from './prompt/inquirer-prompt-service.js';
 import { ModuleComposer } from './template/module-composer.js';
 import { TemplateRepositoryLoader } from './template/template-repository-loader.js';
@@ -24,6 +27,8 @@ const progressReporter = new TerminalSpinner();
 const repositoryCache = new GitRepositoryCache(paths, progressReporter);
 const templateLoader = new TemplateRepositoryLoader();
 const moduleComposer = new ModuleComposer();
+const manifestStore = new ProjectManifestStore();
+const contentHasher = new ContentHasher();
 const harnessRegistry = new HarnessRegistry([
   new OpencodeHarness(),
   new AntigravityHarness(),
@@ -36,8 +41,18 @@ const initCommand = new InitCommand(
   repositoryCache,
   templateLoader,
   moduleComposer,
+  manifestStore,
+  contentHasher,
 );
 const listCommand = new ListCommand(configStore, repositoryCache, templateLoader);
+const syncCommand = new SyncCommand(
+  harnessRegistry,
+  repositoryCache,
+  templateLoader,
+  moduleComposer,
+  manifestStore,
+  contentHasher,
+);
 const resetCommand = new ResetCommand(paths);
 const interactiveRunner = new InteractiveRunner(
   configStore,
@@ -46,9 +61,16 @@ const interactiveRunner = new InteractiveRunner(
   harnessRegistry,
   new InquirerPromptService(),
   initCommand,
+  syncCommand,
 );
 
-const commands: readonly CliCommand[] = [configCommand, initCommand, listCommand, resetCommand];
+const commands: readonly CliCommand[] = [
+  configCommand,
+  initCommand,
+  listCommand,
+  syncCommand,
+  resetCommand,
+];
 
 const program = new Command();
 

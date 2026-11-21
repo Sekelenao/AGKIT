@@ -12,6 +12,8 @@ import { AntigravityHarness } from '../../../src/harness/antigravity/antigravity
 import { HarnessRegistry } from '../../../src/harness/harness-registry.js';
 import { OpencodeHarness } from '../../../src/harness/opencode/opencode-harness.js';
 import { UnknownHarnessError } from '../../../src/harness/unknown-harness-error.js';
+import { ContentHasher } from '../../../src/manifest/content-hasher.js';
+import { ProjectManifestStore } from '../../../src/manifest/project-manifest-store.js';
 import { ModuleComposer } from '../../../src/template/module-composer.js';
 import { TemplateRepositoryLoader } from '../../../src/template/template-repository-loader.js';
 
@@ -83,6 +85,9 @@ describe('InitCommand', () => {
     new AntigravityHarness(),
   ]);
 
+  const manifestStore = new ProjectManifestStore();
+  const contentHasher = new ContentHasher();
+
   let tempDir: string;
   let projectDir: string;
   let configStore: UserConfigStore;
@@ -102,6 +107,8 @@ describe('InitCommand', () => {
       new GitRepositoryCache(paths),
       new TemplateRepositoryLoader(),
       new ModuleComposer(),
+      manifestStore,
+      contentHasher,
     );
     remoteRepoUrl = await createTemplateRemoteRepo(tempDir);
   });
@@ -126,7 +133,22 @@ describe('InitCommand', () => {
       join('.opencode', 'skills', 'git', 'SKILL.md'),
       join('.opencode', 'skills', 'flink', 'SKILL.md'),
       join('.opencode', 'agents', 'reviewer.md'),
+      '.agkit.json',
     ]);
+
+    const manifest = await manifestStore.load(projectDir);
+    expect(manifest).toEqual({
+      harness: 'opencode',
+      modules: ['flink'],
+      git_repository_url: remoteRepoUrl,
+      managed_files: {
+        '.opencode/agents/reviewer.md': contentHasher.hash('# Reviewer\n'),
+        '.opencode/skills/flink/SKILL.md': contentHasher.hash('# Flink Skill\n'),
+        '.opencode/skills/git/SKILL.md': contentHasher.hash('# Git Skill\n'),
+        '.opencode/skills/git/references/commits.md': contentHasher.hash('# Commits\n'),
+        'AGENTS.md': contentHasher.hash('# Base Guide\n\n## Flink Guide\n'),
+      },
+    });
 
     await expect(readFile(join(projectDir, 'AGENTS.md'), 'utf8')).resolves.toBe(
       '# Base Guide\n\n## Flink Guide\n',
@@ -154,6 +176,7 @@ describe('InitCommand', () => {
       join('.agents', 'skills', 'git', 'references', 'commits.md'),
       join('.agents', 'skills', 'git', 'SKILL.md'),
       join('.agents', 'agents', 'reviewer.md'),
+      '.agkit.json',
     ]);
   });
 

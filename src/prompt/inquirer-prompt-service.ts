@@ -1,5 +1,6 @@
 import { ExitPromptError } from '@inquirer/core';
 import { checkbox, input, select } from '@inquirer/prompts';
+import type { ConflictResolution } from '../command/sync/sync-command.js';
 import { PromptCancelledError } from './prompt-cancelled-error.js';
 import type { PromptChoice, PromptService } from './prompt-service.js';
 
@@ -24,6 +25,31 @@ export class InquirerPromptService implements PromptService {
             ? {}
             : { description: choice.description }),
         })),
+      }),
+    );
+  }
+
+  async resolveConflict(filePath: string): Promise<ConflictResolution> {
+    return this.wrapCancel(() =>
+      select<ConflictResolution>({
+        message: `Conflict detected on "${filePath}". How should it be resolved?`,
+        choices: [
+          {
+            name: 'Keep local version',
+            value: 'keep',
+            description: 'Leave your local file untouched',
+          },
+          {
+            name: 'Overwrite with upstream',
+            value: 'overwrite',
+            description: 'Replace local file with upstream version',
+          },
+          {
+            name: 'Backup local (.bak) and apply upstream',
+            value: 'backup',
+            description: 'Save local file as .bak before applying upstream',
+          },
+        ],
       }),
     );
   }

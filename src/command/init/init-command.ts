@@ -1,8 +1,11 @@
+import { sep } from 'node:path';
 import type { Command } from 'commander';
 import { MissingConfigError } from '../../config/missing-config-error.js';
 import type { UserConfigStore } from '../../config/user-config-store.js';
 import type { GitRepositoryCache } from '../../git/git-repository-cache.js';
 import type { HarnessRegistry } from '../../harness/harness-registry.js';
+import type { ContentHasher } from '../../manifest/content-hasher.js';
+import type { ProjectManifestStore } from '../../manifest/project-manifest-store.js';
 import type { ModuleComposer } from '../../template/module-composer.js';
 import { TemplateRepositoryError } from '../../template/template-repository-error.js';
 import type { TemplateRepositoryLoader } from '../../template/template-repository-loader.js';
@@ -30,6 +33,8 @@ export class InitCommand implements CliCommand {
   private readonly repositoryCache: GitRepositoryCache;
   private readonly templateLoader: TemplateRepositoryLoader;
   private readonly moduleComposer: ModuleComposer;
+  private readonly manifestStore: ProjectManifestStore;
+  private readonly contentHasher: ContentHasher;
 
   constructor(
     harnessRegistry: HarnessRegistry,
@@ -37,12 +42,16 @@ export class InitCommand implements CliCommand {
     repositoryCache: GitRepositoryCache,
     templateLoader: TemplateRepositoryLoader,
     moduleComposer: ModuleComposer,
+    manifestStore: ProjectManifestStore,
+    contentHasher: ContentHasher,
   ) {
     this.harnessRegistry = harnessRegistry;
     this.configStore = configStore;
     this.repositoryCache = repositoryCache;
     this.templateLoader = templateLoader;
     this.moduleComposer = moduleComposer;
+    this.manifestStore = manifestStore;
+    this.contentHasher = contentHasher;
   }
 
   register(program: Command): void {
@@ -87,6 +96,7 @@ export class InitCommand implements CliCommand {
     const modules = await this.templateLoader.loadAll(cacheDir);
     const composed = this.moduleComposer.compose(modules, options.moduleIds);
     const writtenFiles: string[] = [];
+    const managedFiles: Record<string, string> = {};
 
     if (composed.rootInstructions !== undefined) {
       const rootPath = await harness.rootInstructions.write(
@@ -94,6 +104,9 @@ export class InitCommand implements CliCommand {
         composed.rootInstructions,
       );
       writtenFiles.push(rootPath);
+      managedFiles[this.toPosixPath(rootPath)] = this.contentHasher.hash(
+        composed.rootInstructions,
+      );
     }
 
     for (const skill of composed.skills) {
@@ -103,6 +116,15 @@ export class InitCommand implements CliCommand {
         skill.files,
       );
       writtenFiles.push(...skillPaths);
+      for (let index = 0; index < skill.files.length; index += 1) {
+        const skillFile = skill.files[index];
+        const writtenPath = skillPaths[index];
+        if (skillFile !== undefined && writtenPath !== undefined) {
+          managedFiles[this.toPosixPath(writtenPath)] = this.contentHasher.hash(
+            skillFile.content,
+          );
+        }
+      }
     }
 
     for (const agent of composed.agents) {
@@ -112,11 +134,25 @@ export class InitCommand implements CliCommand {
         agent.content,
       );
       writtenFiles.push(agentPath);
+      managedFiles[this.toPosixPath(agentPath)] = this.contentHasher.hash(agent.content);
     }
+
+    const manifestFile = await this.manifestStore.save(options.targetDir, {
+      harness: harness.name,
+      modules: [...options.moduleIds],
+      git_repository_url: config.git_repository_url,
+      ...(config.default_ref === undefined ? {} : { ref: config.default_ref }),
+      managed_files: managedFiles,
+    });
+    writtenFiles.push(manifestFile);
 
     return {
       resolvedModuleIds: composed.resolvedModules.map((mod) => mod.id),
       writtenFiles,
     };
+  }
+
+  private toPosixPath(relativePath: string): string {
+    return relativePath.split(sep).join('/');
   }
 }

@@ -1,6 +1,7 @@
 import type { ConfigCommand } from '../command/config/config-command.js';
 import type { InitCommand } from '../command/init/init-command.js';
 import type { ListCommand } from '../command/list/list-command.js';
+import type { SyncCommand } from '../command/sync/sync-command.js';
 import type { UserConfig } from '../config/user-config.js';
 import type { UserConfigStore } from '../config/user-config-store.js';
 import type { HarnessRegistry } from '../harness/harness-registry.js';
@@ -12,6 +13,11 @@ const AVAILABLE_ACTIONS: readonly PromptChoice[] = [
     value: 'init',
     label: 'Initialize a project',
     description: 'Generate AI templates in the current directory',
+  },
+  {
+    value: 'sync',
+    label: 'Synchronize templates',
+    description: 'Update managed files in this project from the template repository',
   },
   {
     value: 'config',
@@ -32,6 +38,7 @@ export class InteractiveRunner {
   private readonly harnessRegistry: HarnessRegistry;
   private readonly promptService: PromptService;
   private readonly initCommand: InitCommand;
+  private readonly syncCommand: SyncCommand;
 
   constructor(
     configStore: UserConfigStore,
@@ -40,6 +47,7 @@ export class InteractiveRunner {
     harnessRegistry: HarnessRegistry,
     promptService: PromptService,
     initCommand: InitCommand,
+    syncCommand: SyncCommand,
   ) {
     this.configStore = configStore;
     this.configCommand = configCommand;
@@ -47,6 +55,7 @@ export class InteractiveRunner {
     this.harnessRegistry = harnessRegistry;
     this.promptService = promptService;
     this.initCommand = initCommand;
+    this.syncCommand = syncCommand;
   }
 
   async run(targetDir: string): Promise<void> {
@@ -88,6 +97,39 @@ export class InteractiveRunner {
 
       for (const file of result.writtenFiles) {
         console.log(`Created ${file}`);
+      }
+      return;
+    }
+
+    if (action === 'sync') {
+      const result = await this.syncCommand.execute({
+        targetDir,
+        resolveConflict: (filePath) => this.promptService.resolveConflict(filePath),
+      });
+
+      for (const file of result.createdFiles) {
+        console.log(`Created ${file}`);
+      }
+      for (const file of result.backedUpFiles) {
+        console.log(`Backed up ${file}`);
+      }
+      for (const file of result.updatedFiles) {
+        console.log(`Updated ${file}`);
+      }
+      for (const file of result.deletedFiles) {
+        console.log(`Deleted ${file}`);
+      }
+      for (const file of result.keptConflictFiles) {
+        console.log(`Conflict (kept local) ${file}`);
+      }
+
+      const totalChanges =
+        result.createdFiles.length +
+        result.updatedFiles.length +
+        result.deletedFiles.length +
+        result.keptConflictFiles.length;
+      if (totalChanges === 0) {
+        console.log('Already up to date.');
       }
       return;
     }
