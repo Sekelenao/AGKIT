@@ -1,5 +1,5 @@
 import { ExitPromptError } from '@inquirer/core';
-import { select } from '@inquirer/prompts';
+import { input, select } from '@inquirer/prompts';
 import { PromptCancelledError } from './prompt-cancelled-error.js';
 import type { PromptChoice, PromptService } from './prompt-service.js';
 
@@ -12,12 +12,34 @@ export class InquirerPromptService implements PromptService {
     return this.runSelect('Select target AI harness', choices);
   }
 
+  async inputRepoUrl(currentUrl?: string): Promise<string> {
+    return this.wrapCancel(() =>
+      input({
+        message: 'Template Git repository URL',
+        default: currentUrl,
+        validate: (value) =>
+          value.trim().length > 0 || 'Repository URL cannot be empty.',
+      }),
+    );
+  }
+
+  async inputDefaultRef(currentRef?: string): Promise<string | undefined> {
+    const value = await this.wrapCancel(() =>
+      input({
+        message: 'Default branch or tag (leave empty for repository default)',
+        default: currentRef,
+      }),
+    );
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }
+
   private async runSelect(
     message: string,
     choices: readonly PromptChoice[],
   ): Promise<string> {
-    try {
-      return await select({
+    return this.wrapCancel(() =>
+      select({
         message,
         choices: choices.map((choice) => ({
           name: choice.label,
@@ -26,7 +48,13 @@ export class InquirerPromptService implements PromptService {
             ? {}
             : { description: choice.description }),
         })),
-      });
+      }),
+    );
+  }
+
+  private async wrapCancel<T>(prompt: () => Promise<T>): Promise<T> {
+    try {
+      return await prompt();
     } catch (error: unknown) {
       if (error instanceof ExitPromptError) {
         throw new PromptCancelledError({ cause: error });
