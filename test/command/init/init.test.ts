@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { InitCommand } from '../../../src/command/init/init.js';
-import { AgyHarness } from '../../../src/harness/agy/agy-harness.js';
+import { AntigravityHarness } from '../../../src/harness/antigravity/antigravity-harness.js';
 import { OpencodeHarness } from '../../../src/harness/opencode/opencode-harness.js';
 
 describe('InitCommand', () => {
@@ -34,7 +34,7 @@ describe('InitCommand', () => {
   it('writes SKILL.md into the Antigravity skills directory', async () => {
     const result = await initCommand.execute({
       targetDir: tempDir,
-      harness: new AgyHarness(),
+      harness: new AntigravityHarness(),
     });
     const expectedRelative = join('.agents', 'skills', 'example', 'SKILL.md');
 

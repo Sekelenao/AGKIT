@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 import { InitCommand } from './command/init/init.js';
-import { AgyHarness } from './harness/agy/agy-harness.js';
+import { AntigravityHarness } from './harness/antigravity/antigravity-harness.js';
 import { HarnessRegistry } from './harness/harness-registry.js';
 import { OpencodeHarness } from './harness/opencode/opencode-harness.js';
 import { UnknownHarnessError } from './harness/unknown-harness-error.js';
@@ -12,7 +12,7 @@ interface InitCliOptions {
 
 const harnessRegistry = new HarnessRegistry([
   new OpencodeHarness(),
-  new AgyHarness(),
+  new AntigravityHarness(),
 ]);
 const initCommand = new InitCommand();
 

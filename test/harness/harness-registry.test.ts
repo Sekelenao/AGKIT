@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AgyHarness } from '../../src/harness/agy/agy-harness.js';
+import { AntigravityHarness } from '../../src/harness/antigravity/antigravity-harness.js';
 import { HarnessRegistry } from '../../src/harness/harness-registry.js';
 import { OpencodeHarness } from '../../src/harness/opencode/opencode-harness.js';
 import { UnknownHarnessError } from '../../src/harness/unknown-harness-error.js';
@@ -7,17 +7,22 @@ import { UnknownHarnessError } from '../../src/harness/unknown-harness-error.js'
 describe('HarnessRegistry', () => {
   const registry = new HarnessRegistry([
     new OpencodeHarness(),
-    new AgyHarness(),
+    new AntigravityHarness(),
   ]);
 
-  it('lists all registered harness names', () => {
-    expect(registry.listNames()).toEqual(['opencode', 'agy']);
+  it('lists canonical harness names only', () => {
+    expect(registry.listNames()).toEqual(['opencode', 'antigravity']);
   });
 
-  it('resolves registered harnesses case-insensitively', () => {
+  it('resolves registered harnesses by canonical name case-insensitively', () => {
     expect(registry.resolve('opencode')).toBeInstanceOf(OpencodeHarness);
     expect(registry.resolve('OPENCODE')).toBeInstanceOf(OpencodeHarness);
-    expect(registry.resolve(' agy ')).toBeInstanceOf(AgyHarness);
+    expect(registry.resolve(' antigravity ')).toBeInstanceOf(AntigravityHarness);
+  });
+
+  it('resolves registered harnesses by alias', () => {
+    expect(registry.resolve('agy')).toBeInstanceOf(AntigravityHarness);
+    expect(registry.resolve('AGY')).toBeInstanceOf(AntigravityHarness);
   });
 
   it.each(['', '   ', 'unknown', 'cursor'])(
