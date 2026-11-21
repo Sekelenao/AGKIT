@@ -75,17 +75,19 @@ export class InteractiveRunner {
   private async runConfiguration(
     currentConfig: UserConfig | undefined,
   ): Promise<UserConfig> {
-    const repoUrl = await this.promptService.inputRepoUrl(currentConfig?.repoUrl);
+    const gitRepositoryUrl = await this.promptService.inputRepoUrl(
+      currentConfig?.git_repository_url,
+    );
     const defaultRef = await this.promptService.inputDefaultRef(
-      currentConfig?.defaultRef,
+      currentConfig?.default_ref,
     );
 
     const result = await this.configCommand.execute({
-      repoUrl,
-      defaultRef,
+      git_repository_url: gitRepositoryUrl,
+      default_ref: defaultRef,
     });
 
-    console.log(`Configured repository: ${result.config.repoUrl}`);
+    console.log(`Configured repository: ${result.config.git_repository_url}`);
     return result.config;
   }
 }

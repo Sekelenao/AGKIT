@@ -34,19 +34,19 @@ export class ConfigCommand implements CliCommand {
       .option('--ref <ref>', 'Default branch or tag to track')
       .action(async (options: ConfigCliOptions): Promise<void> => {
         const result = await this.execute({
-          repoUrl: options.repo,
-          defaultRef: options.ref,
+          git_repository_url: options.repo,
+          default_ref: options.ref,
         });
 
-        console.log(`Configured repository: ${result.config.repoUrl}`);
+        console.log(`Configured repository: ${result.config.git_repository_url}`);
         console.log(`Synced local cache: ${result.cacheDir}`);
       });
   }
 
   async execute(config: UserConfig): Promise<ConfigResult> {
     const cacheDir = await this.repositoryCache.sync(
-      config.repoUrl,
-      config.defaultRef,
+      config.git_repository_url,
+      config.default_ref,
     );
     await this.configStore.save(config);
 

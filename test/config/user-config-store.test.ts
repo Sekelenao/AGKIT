@@ -27,13 +27,13 @@ describe('UserConfigStore', () => {
 
   it('saves and reloads a valid configuration with trimmed values', async () => {
     await store.save({
-      repoUrl: '  git@github.com:org/templates.git  ',
-      defaultRef: '  main  ',
+      git_repository_url: '  git@github.com:org/templates.git  ',
+      default_ref: '  main  ',
     });
 
     await expect(store.load()).resolves.toEqual({
-      repoUrl: 'git@github.com:org/templates.git',
-      defaultRef: 'main',
+      git_repository_url: 'git@github.com:org/templates.git',
+      default_ref: 'main',
     });
   });
 
@@ -44,9 +44,9 @@ describe('UserConfigStore', () => {
   });
 
   it.each([
-    { repoUrl: '' },
-    { repoUrl: '   ' },
-    { repoUrl: 'git@github.com:org/templates.git', defaultRef: '   ' },
+    { git_repository_url: '' },
+    { git_repository_url: '   ' },
+    { git_repository_url: 'git@github.com:org/templates.git', default_ref: '   ' },
   ])('rejects invalid configuration %o', async (invalid) => {
     await expect(store.save(invalid)).rejects.toThrow(InvalidConfigError);
   });

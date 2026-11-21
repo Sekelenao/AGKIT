@@ -96,7 +96,9 @@ describe('InteractiveRunner', () => {
     await runner.run(projectDir);
 
     expect(repoPromptCount).toBe(1);
-    expect(await configStore.load()).toEqual({ repoUrl: remoteRepoUrl });
+    expect(await configStore.load()).toEqual({
+      git_repository_url: remoteRepoUrl,
+    });
     expect(capturedActions.map((c) => c.label)).toEqual([
       'Initialize a project',
       'Configure template repository',
@@ -111,7 +113,10 @@ describe('InteractiveRunner', () => {
   });
 
   it('skips initial setup when already configured and allows reconfiguring from menu', async () => {
-    await configStore.save({ repoUrl: remoteRepoUrl, defaultRef: 'main' });
+    await configStore.save({
+      git_repository_url: remoteRepoUrl,
+      default_ref: 'main',
+    });
 
     let receivedCurrentUrl: string | undefined;
     let receivedCurrentRef: string | undefined;
@@ -145,6 +150,8 @@ describe('InteractiveRunner', () => {
 
     expect(receivedCurrentUrl).toBe(remoteRepoUrl);
     expect(receivedCurrentRef).toBe('main');
-    expect(await configStore.load()).toEqual({ repoUrl: remoteRepoUrl });
+    expect(await configStore.load()).toEqual({
+      git_repository_url: remoteRepoUrl,
+    });
   });
 });
