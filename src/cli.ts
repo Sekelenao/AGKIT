@@ -7,6 +7,7 @@ import { ListCommand } from './command/list/list-command.js';
 import { ResetCommand } from './command/reset/reset-command.js';
 import { SyncCommand } from './command/sync/sync-command.js';
 import { AgkitPaths } from './config/agkit-paths.js';
+import { PackageVersionReader } from './config/package-version-reader.js';
 import { UserConfigStore } from './config/user-config-store.js';
 import { CliError } from './error/cli-error.js';
 import { GitRepositoryCache } from './git/git-repository-cache.js';
@@ -19,10 +20,16 @@ import { ProjectManifestStore } from './manifest/project-manifest-store.js';
 import { InquirerPromptService } from './prompt/inquirer-prompt-service.js';
 import { ModuleComposer } from './template/module-composer.js';
 import { TemplateRepositoryLoader } from './template/template-repository-loader.js';
+import { AlternateScreen } from './ui/alternate-screen.js';
+import { BannerRenderer } from './ui/banner-renderer.js';
 import { TerminalSpinner } from './ui/terminal-spinner.js';
+
+const cliVersion = await new PackageVersionReader().read();
 
 const paths = new AgkitPaths();
 const configStore = new UserConfigStore(paths);
+const alternateScreen = new AlternateScreen();
+const bannerRenderer = new BannerRenderer(cliVersion);
 const progressReporter = new TerminalSpinner();
 const repositoryCache = new GitRepositoryCache(paths, progressReporter);
 const templateLoader = new TemplateRepositoryLoader();
@@ -77,9 +84,15 @@ const program = new Command();
 program
   .name('agkit')
   .description('CLI for managing enterprise AI harness templates')
-  .version('0.1.0')
+  .version(cliVersion)
   .action(async (): Promise<void> => {
-    await interactiveRunner.run(process.cwd());
+    const summaryLines = await alternateScreen.run(async () => {
+      bannerRenderer.render();
+      return interactiveRunner.run(process.cwd());
+    });
+    for (const line of summaryLines) {
+      console.log(line);
+    }
   });
 
 for (const command of commands) {

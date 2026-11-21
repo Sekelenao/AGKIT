@@ -254,6 +254,6 @@ describe('InteractiveRunner', () => {
       syncCommand,
     );
 
-    await expect(runner.run(tempDir)).resolves.toBeUndefined();
+    await expect(runner.run(tempDir)).resolves.toEqual([]);
   });
 });

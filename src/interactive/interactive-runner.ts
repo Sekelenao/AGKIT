@@ -58,11 +58,12 @@ export class InteractiveRunner {
     this.syncCommand = syncCommand;
   }
 
-  async run(targetDir: string): Promise<void> {
+  async run(targetDir: string): Promise<readonly string[]> {
+    const summaryLines: string[] = [];
     let config = await this.configStore.load();
 
     if (config === undefined) {
-      config = await this.runConfiguration(undefined);
+      config = await this.runConfiguration(undefined, summaryLines);
     }
 
     const action = await this.promptService.selectAction(AVAILABLE_ACTIONS);
@@ -96,9 +97,9 @@ export class InteractiveRunner {
       });
 
       for (const file of result.writtenFiles) {
-        console.log(`Created ${file}`);
+        summaryLines.push(`Created ${file}`);
       }
-      return;
+      return summaryLines;
     }
 
     if (action === 'sync') {
@@ -108,19 +109,19 @@ export class InteractiveRunner {
       });
 
       for (const file of result.createdFiles) {
-        console.log(`Created ${file}`);
+        summaryLines.push(`Created ${file}`);
       }
       for (const file of result.backedUpFiles) {
-        console.log(`Backed up ${file}`);
+        summaryLines.push(`Backed up ${file}`);
       }
       for (const file of result.updatedFiles) {
-        console.log(`Updated ${file}`);
+        summaryLines.push(`Updated ${file}`);
       }
       for (const file of result.deletedFiles) {
-        console.log(`Deleted ${file}`);
+        summaryLines.push(`Deleted ${file}`);
       }
       for (const file of result.keptConflictFiles) {
-        console.log(`Conflict (kept local) ${file}`);
+        summaryLines.push(`Conflict (kept local) ${file}`);
       }
 
       const totalChanges =
@@ -129,18 +130,18 @@ export class InteractiveRunner {
         result.deletedFiles.length +
         result.keptConflictFiles.length;
       if (totalChanges === 0) {
-        console.log('Already up to date.');
+        summaryLines.push('Already up to date.');
       }
-      return;
+      return summaryLines;
     }
 
     if (action === 'config') {
-      await this.runConfiguration(config);
-      return;
+      await this.runConfiguration(config, summaryLines);
+      return summaryLines;
     }
 
     if (action === 'exit') {
-      return;
+      return summaryLines;
     }
 
     throw new Error(`Unsupported interactive action "${action}".`);
@@ -148,6 +149,7 @@ export class InteractiveRunner {
 
   private async runConfiguration(
     currentConfig: UserConfig | undefined,
+    summaryLines: string[],
   ): Promise<UserConfig> {
     const gitRepositoryUrl = await this.promptService.inputRepoUrl(
       currentConfig?.git_repository_url,
@@ -161,7 +163,7 @@ export class InteractiveRunner {
       default_ref: defaultRef,
     });
 
-    console.log(`Configured repository: ${result.config.git_repository_url}`);
+    summaryLines.push(`Configured repository: ${result.config.git_repository_url}`);
     return result.config;
   }
 }
