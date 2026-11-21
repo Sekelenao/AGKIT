@@ -24,4 +24,4 @@ Before performing any task, agents must consult and apply the relevant skills in
 
 ## Dependency Policy
 
-- Standard Libraries Only: Only add widely adopted, actively maintained libraries (`commander`, `@inquirer/prompts`, `zod`, `simple-git`, `vitest`). Avoid obscure or niche packages.
+- Standard Libraries Only: Only add widely adopted, actively maintained libraries (`commander`, `@inquirer/prompts`, `chalk`, `zod`, `simple-git`, `vitest`). Avoid obscure or niche packages.

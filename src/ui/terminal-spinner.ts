@@ -1,3 +1,4 @@
+import { Chalk } from 'chalk';
 import type { ProgressReporter } from './progress-reporter.js';
 
 export interface TerminalOutputStream {
@@ -7,6 +8,7 @@ export interface TerminalOutputStream {
 
 const SPINNER_FRAMES: readonly string[] = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 const CLEAR_LINE_SEQUENCE = '\r\x1b[2K';
+const ttyPalette = new Chalk({ level: 3 });
 
 export class TerminalSpinner implements ProgressReporter {
   private readonly stream: TerminalOutputStream;
@@ -24,9 +26,9 @@ export class TerminalSpinner implements ProgressReporter {
 
     let frameIndex = 0;
     const render = (): void => {
-      const frame = SPINNER_FRAMES[frameIndex % SPINNER_FRAMES.length] ?? SPINNER_FRAMES[0];
+      const frame = SPINNER_FRAMES[frameIndex % SPINNER_FRAMES.length] ?? SPINNER_FRAMES[0] ?? '⠋';
       frameIndex += 1;
-      this.stream.write(`\r${frame} ${message}`);
+      this.stream.write(`\r${ttyPalette.yellow(frame)} ${message}`);
     };
 
     render();
