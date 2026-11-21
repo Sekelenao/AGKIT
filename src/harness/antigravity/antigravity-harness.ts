@@ -5,6 +5,7 @@ import type { SkillHandler } from '../skill-handler.js';
 
 export class AntigravityHarness implements Harness {
   readonly name = 'antigravity';
+  readonly displayName = 'Antigravity';
   readonly aliases: readonly string[] = ['agy'];
   readonly skills: SkillHandler;
 

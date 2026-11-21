@@ -1,4 +1,6 @@
-export class UnknownHarnessError extends Error {
+import { CliError } from '../error/cli-error.js';
+
+export class UnknownHarnessError extends CliError {
   readonly harnessName: string;
   readonly availableHarnesses: readonly string[];
 

@@ -2,11 +2,11 @@ import type { Harness } from './harness.js';
 import { UnknownHarnessError } from './unknown-harness-error.js';
 
 export class HarnessRegistry {
-  private readonly canonicalNames: readonly string[];
+  private readonly registeredHarnesses: readonly Harness[];
   private readonly harnessesByKey: ReadonlyMap<string, Harness>;
 
   constructor(harnesses: readonly Harness[]) {
-    this.canonicalNames = harnesses.map((harness) => harness.name);
+    this.registeredHarnesses = [...harnesses];
 
     const entries = new Map<string, Harness>();
     for (const harness of harnesses) {
@@ -18,8 +18,12 @@ export class HarnessRegistry {
     this.harnessesByKey = entries;
   }
 
+  listAll(): readonly Harness[] {
+    return this.registeredHarnesses;
+  }
+
   listNames(): readonly string[] {
-    return this.canonicalNames;
+    return this.registeredHarnesses.map((harness) => harness.name);
   }
 
   resolve(name: string): Harness {

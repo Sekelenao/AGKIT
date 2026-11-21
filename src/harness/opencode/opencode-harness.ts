@@ -5,6 +5,7 @@ import type { SkillHandler } from '../skill-handler.js';
 
 export class OpencodeHarness implements Harness {
   readonly name = 'opencode';
+  readonly displayName = 'OpenCode';
   readonly aliases: readonly string[] = [];
   readonly skills: SkillHandler;
 
