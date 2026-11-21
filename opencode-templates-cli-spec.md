@@ -68,7 +68,7 @@ templates-repo/
 - Les composants peuvent déclarer des dépendances via `extends` et être mixés librement à l'`init` (ex: `base + java-base + flink`).
 - Les couches sont appliquées dans l'ordre résolu (de la plus générique à la plus spécifique) : en cas de skill/agent/commande du même nom, la couche la plus spécifique surcharge la précédente.
 - Pour `AGENTS.md`, les sections de chaque couche sont concaténées dans l'ordre des couches.
-- Le placement physique des fichiers dans le projet dépend du **harness** sélectionné (`opencode`, `agy`, etc.) via l'architecture `Harness` composée de sous-handlers (`SkillHandler`, etc.).
+- Le placement physique des fichiers dans le projet dépend du **harness** sélectionné (`opencode`, `antigravity` avec alias `agy`, etc.) via l'architecture `Harness` composée de sous-handlers (`SkillHandler`, etc.).
 
 ### Templating & Variables
 - Les fichiers peuvent contenir des placeholders (ex: `{{projectName}}`, `{{javaVersion}}`).
@@ -76,11 +76,13 @@ templates-repo/
 
 ---
 
-## 5. Connexion au repo & Cache local
+## 5. Connexion au repo & Stockage local
 
-- La CLI s'appuie sur `git` en local pour cloner/mettre à jour le repo interne dans un cache utilisateur (ex: `~/.cache/agkit/repo`).
-- Réutilise automatiquement les credentials SSH / HTTPS déjà configurés sur le poste du développeur.
-- Supporte le choix d'une **branche** ou d'un **tag** (défaut : `main` ou dernier tag).
+- Stockage utilisateur OS-agnostique sous `~/.agkit/` (Linux, macOS, Windows) :
+  - Configuration : `~/.agkit/config.json` (`git_repository_url`, `default_ref` en `snake_case`, validé par `zod`).
+  - Cache Git : `~/.agkit/cache/repo`.
+- La CLI s'appuie sur `simple-git` avec `GIT_TERMINAL_PROMPT=0` : réutilise automatiquement les clés SSH / credential helpers du poste sans jamais bloquer sur un prompt username/mot de passe.
+- Supporte le choix d'une **branche**, d'un **tag** ou d'un **commit** (défaut : branche par défaut du repo), y compris sur un repo fraîchement initialisé (vide).
 
 ---
 
@@ -108,13 +110,17 @@ Le fichier `.opencode/.template-lock.json` (ou équivalent selon le harness) enr
 ## 7. Stack technique & Commandes de la CLI
 
 ### Stack & Distribution
-- **Langage** : TypeScript / Node.js (ESM, `>=20`)
-- **CLI** : `commander` (sous-commandes, flags scriptables, `--help`) + `@inquirer/prompts` (sélection interactive lorsque les flags sont omis)
-- **Distribution** : Registry npm privé de l'entreprise (`npx @<scope>/agkit` ou `npm i -g @<scope>/agkit`)
+- **Langage & Style** : TypeScript / Node.js (ESM, `>=20`), architecture **POO** (1 classe par fichier, injection par constructeur, interfaces par capacité).
+- **Librairies standards retenues** : `commander` (CLI), `@inquirer/prompts` (mode interactif), `zod` (validation schémas JSON), `simple-git` (Git), `vitest` (tests).
+- **Distribution** : Registry npm privé de l'entreprise (`npx @<scope>/agkit` ou `npm i -g @<scope>/agkit`).
 
-### Commandes prévues
-- `agkit config` : Configurer l'URL par défaut du repo de templates dans la config utilisateur.
-- `agkit list` : Lister les composants disponibles dans le repo de templates.
-- `agkit init` : Choisir le harness (`opencode`, `agy`…) et les composants à mixer (interactif ou via flags), renseigner les variables, générer les fichiers et créer le lockfile.
-- `agkit sync` : Mettre à jour le cache Git, comparer les hashes du lockfile et synchroniser les fichiers gérés.
-- `agkit status` / `agkit diff` : Afficher l'état des fichiers gérés (modifications locales vs mises à jour disponibles).
+### Modes d'utilisation & Commandes prévues
+- **`agkit` (sans sous-commande — mode interactif pur)** :
+  - Si `~/.agkit/config.json` n'existe pas encore, demande l'URL du repo Git (+ ref optionnelle), synchronise le cache et sauvegarde la config.
+  - Affiche ensuite le menu interactif (`Initialize a project`, `Configure template repository`, et à terme `sync`, `list`…).
+- **Sous-commandes CLI (mode scriptable pur, zéro prompt)** :
+  - `agkit config --repo <url> [--ref <ref>]` : Configurer le repo de templates et synchroniser `~/.agkit/cache/repo`.
+  - `agkit list` : Lister les composants disponibles dans le repo de templates.
+  - `agkit init --harness <opencode|antigravity|agy> ...` : Générer les fichiers pour le harness et les composants choisis, et créer le lockfile.
+  - `agkit sync` : Mettre à jour le cache Git, comparer les hashes du lockfile et synchroniser les fichiers gérés.
+  - `agkit status` / `agkit diff` : Afficher l'état des fichiers gérés (modifications locales vs mises à jour disponibles).
