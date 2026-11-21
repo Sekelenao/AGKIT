@@ -13,7 +13,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node -e \"import('node:fs').then(fs => fs.chmodSync('dist/cli.js', 0o755))\"",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

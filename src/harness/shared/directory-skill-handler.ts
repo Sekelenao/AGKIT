@@ -2,20 +2,24 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import type { SkillHandler } from '../skill-handler.js';
 
-export function createDirectorySkillHandler(skillsRootDir: string): SkillHandler {
-  return {
-    relativePath(skillName: string): string {
-      return join(skillsRootDir, skillName, 'SKILL.md');
-    },
+export class DirectorySkillHandler implements SkillHandler {
+  private readonly skillsRootDir: string;
 
-    async write(targetDir: string, skillName: string, content: string): Promise<string> {
-      const relative = join(skillsRootDir, skillName, 'SKILL.md');
-      const absolute = join(targetDir, relative);
+  constructor(skillsRootDir: string) {
+    this.skillsRootDir = skillsRootDir;
+  }
 
-      await mkdir(dirname(absolute), { recursive: true });
-      await writeFile(absolute, content, 'utf8');
+  relativePath(skillName: string): string {
+    return join(this.skillsRootDir, skillName, 'SKILL.md');
+  }
 
-      return relative;
-    },
-  };
+  async write(targetDir: string, skillName: string, content: string): Promise<string> {
+    const relative = this.relativePath(skillName);
+    const absolute = join(targetDir, relative);
+
+    await mkdir(dirname(absolute), { recursive: true });
+    await writeFile(absolute, content, 'utf8');
+
+    return relative;
+  }
 }

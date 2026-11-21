@@ -1,8 +1,13 @@
 import { join } from 'node:path';
 import type { Harness } from '../harness.js';
-import { createDirectorySkillHandler } from '../shared/directory-skill-handler.js';
+import { DirectorySkillHandler } from '../shared/directory-skill-handler.js';
+import type { SkillHandler } from '../skill-handler.js';
 
-export const agyHarness: Harness = {
-  name: 'agy',
-  skills: createDirectorySkillHandler(join('.agents', 'skills')),
-};
+export class AgyHarness implements Harness {
+  readonly name = 'agy';
+  readonly skills: SkillHandler;
+
+  constructor(skills: SkillHandler = new DirectorySkillHandler(join('.agents', 'skills'))) {
+    this.skills = skills;
+  }
+}

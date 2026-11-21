@@ -39,32 +39,40 @@ Fournir aux équipes de développement des templates IA standardisés pour **Ope
 
 ## 4. Structure du repo central de templates
 
-Un projet correspond à **1 seul profil** (pas de multistack), chaque profil héritant d'un socle commun `base`.
+Les templates sont organisés en **composants (couches) composables** (ex: `base` + `java-base` + `flink`, ou `base` + `java-base` + `spring`, ou `base` + `front`), indépendants du harness cible (`opencode`, `agy`, etc.).
 
 ```text
 templates-repo/
-├── base/                         # Socle commun appliqué à tous les profils
+├── base/                         # Socle commun entreprise
 │   ├── AGENTS.md
-│   └── .opencode/
-│       ├── skills/
-│       ├── agents/
-│       └── commands/
-└── profiles/
-    ├── flink/
-    │   ├── profile.json          # Métadonnées + déclaration des variables
-    │   ├── AGENTS.md             # Surcharge ou complément pour Flink
-    │   └── .opencode/
-    ├── front/
-    │   ├── profile.json
-    │   └── ...
-    └── spring/
-        ├── profile.json
-        └── ...
+│   ├── skills/
+│   ├── agents/
+│   └── commands/
+├── java-base/                    # Couche Java partagée (Spring, Flink...)
+│   ├── module.json               # Métadonnées, extends: ["base"], variables
+│   ├── AGENTS.md
+│   └── skills/
+├── flink/
+│   ├── module.json               # extends: ["java-base"], variables
+│   ├── AGENTS.md
+│   └── skills/
+├── spring/
+│   ├── module.json               # extends: ["java-base"], variables
+│   └── ...
+└── front/
+    ├── module.json               # extends: ["base"], variables
+    └── ...
 ```
+
+### Composition & Résolution des couches
+- Les composants peuvent déclarer des dépendances via `extends` et être mixés librement à l'`init` (ex: `base + java-base + flink`).
+- Les couches sont appliquées dans l'ordre résolu (de la plus générique à la plus spécifique) : en cas de skill/agent/commande du même nom, la couche la plus spécifique surcharge la précédente.
+- Pour `AGENTS.md`, les sections de chaque couche sont concaténées dans l'ordre des couches.
+- Le placement physique des fichiers dans le projet dépend du **harness** sélectionné (`opencode`, `agy`, etc.) via l'architecture `Harness` composée de sous-handlers (`SkillHandler`, etc.).
 
 ### Templating & Variables
 - Les fichiers peuvent contenir des placeholders (ex: `{{projectName}}`, `{{javaVersion}}`).
-- Les variables attendues sont déclarées dans `profile.json`, demandées interactivement lors de l'`init`, puis enregistrées dans le lockfile pour être réappliquées automatiquement lors des futurs `sync`.
+- Les variables attendues sont déclarées dans `module.json`, demandées interactivement lors de l'`init`, puis enregistrées dans le lockfile pour être réappliquées automatiquement lors des futurs `sync`.
 
 ---
 
@@ -78,11 +86,12 @@ templates-repo/
 
 ## 6. Lockfile & Gestion des conflits (`sync`)
 
-Le fichier `.opencode/.template-lock.json` enregistre :
+Le fichier `.opencode/.template-lock.json` (ou équivalent selon le harness) enregistre :
+- Le harness cible (`opencode`, `agy`, etc.)
 - L'URL du repo de templates et la ref (`branch` / `tag` / `commit`)
-- Le profil utilisé (`flink`, `front`, `spring`, etc.)
+- Les composants sélectionnés (ex: `["base", "java-base", "flink"]`)
 - Les valeurs des variables renseignées à l'`init`
-- La liste des fichiers gérés avec leur hash **SHA256** issu du dernier `sync`
+- La liste des fichiers gérés avec leur hash **SHA256** (chemins normalisés POSIX `/` et fins de ligne LF) issu du dernier `sync`
 
 ### Règles de résolution lors d'un `sync`
 1. **Fichier absent du lockfile** → fichier spécifique au projet, **jamais touché**.
@@ -99,12 +108,13 @@ Le fichier `.opencode/.template-lock.json` enregistre :
 ## 7. Stack technique & Commandes de la CLI
 
 ### Stack & Distribution
-- **Langage** : TypeScript / Node.js
+- **Langage** : TypeScript / Node.js (ESM, `>=20`)
+- **CLI** : `commander` (sous-commandes, flags scriptables, `--help`) + `@inquirer/prompts` (sélection interactive lorsque les flags sont omis)
 - **Distribution** : Registry npm privé de l'entreprise (`npx @<scope>/agkit` ou `npm i -g @<scope>/agkit`)
 
 ### Commandes prévues
-- `agkit config` : Configurer l'URL par défaut du repo de templates dans `~/.config/agkit/config.json`.
-- `agkit list` : Lister les profils disponibles dans le repo de templates.
-- `agkit init` : Choisir un profil, renseigner les variables, générer `AGENTS.md` + `.opencode/` et créer `.opencode/.template-lock.json`.
+- `agkit config` : Configurer l'URL par défaut du repo de templates dans la config utilisateur.
+- `agkit list` : Lister les composants disponibles dans le repo de templates.
+- `agkit init` : Choisir le harness (`opencode`, `agy`…) et les composants à mixer (interactif ou via flags), renseigner les variables, générer les fichiers et créer le lockfile.
 - `agkit sync` : Mettre à jour le cache Git, comparer les hashes du lockfile et synchroniser les fichiers gérés.
 - `agkit status` / `agkit diff` : Afficher l'état des fichiers gérés (modifications locales vs mises à jour disponibles).

@@ -14,8 +14,9 @@ description: TypeScript and Node.js coding standards for AGKIT (strict typing, E
 
 ## 2. Immutability & Data Modeling
 
-- Prefer `readonly`: Mark interface properties, class fields, and array parameters (`readonly string[]`) as `readonly` unless mutation is strictly required.
-- Avoid Unnecessary Classes: Prefer plain modules, functions, and typed interfaces/records over classes unless encapsulating stateful resources or custom `Error` subclasses.
+- Prefer `readonly`: Mark interface properties, class fields (`private readonly`), and array parameters (`readonly string[]`) as `readonly` unless mutation is strictly required.
+- Object-Oriented Design: Model domain services, handlers, registries, and commands as explicit classes implementing interfaces (`class Foo implements Bar`) with constructor dependency injection and `private readonly` encapsulation. Keep plain `interface` / `type` definitions for immutable data carriers (DTOs/options/results).
+- One Class Per File: Declare at most one exported class per source file, with the file name matching the class name.
 - Fail-Fast Boundary Validation: Validate external inputs (`profile.json`, lockfile, global config, CLI options) once at the boundary; do not scatter redundant defensive checks deep inside internal functions.
 
 ## 3. ESM & Node Built-ins

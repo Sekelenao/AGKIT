@@ -1,7 +1,20 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
-import { opencodeHarness } from './harness/opencode/opencode-harness.js';
-import { initProject } from './command/init/init.js';
+import { InitCommand } from './command/init/init.js';
+import { AgyHarness } from './harness/agy/agy-harness.js';
+import { HarnessRegistry } from './harness/harness-registry.js';
+import { OpencodeHarness } from './harness/opencode/opencode-harness.js';
+import { UnknownHarnessError } from './harness/unknown-harness-error.js';
+
+interface InitCliOptions {
+  readonly harness: string;
+}
+
+const harnessRegistry = new HarnessRegistry([
+  new OpencodeHarness(),
+  new AgyHarness(),
+]);
+const initCommand = new InitCommand();
 
 const program = new Command();
 
@@ -13,14 +26,29 @@ program
 program
   .command('init')
   .description('Initialize AI templates in the current project')
-  .action(async (): Promise<void> => {
-    const result = await initProject({
-      targetDir: process.cwd(),
-      harness: opencodeHarness,
-    });
+  .option(
+    '--harness <name>',
+    `Target AI harness (${harnessRegistry.listNames().join(', ')})`,
+    'opencode',
+  )
+  .action(async (options: InitCliOptions): Promise<void> => {
+    try {
+      const harness = harnessRegistry.resolve(options.harness);
+      const result = await initCommand.execute({
+        targetDir: process.cwd(),
+        harness,
+      });
 
-    for (const file of result.writtenFiles) {
-      console.log(`Created ${file}`);
+      for (const file of result.writtenFiles) {
+        console.log(`Created ${file}`);
+      }
+    } catch (error: unknown) {
+      if (error instanceof UnknownHarnessError) {
+        console.error(error.message);
+        process.exitCode = 1;
+        return;
+      }
+      throw error;
     }
   });
 
