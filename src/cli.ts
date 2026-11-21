@@ -3,6 +3,7 @@ import { Command } from 'commander';
 import type { CliCommand } from './command/cli-command.js';
 import { ConfigCommand } from './command/config/config-command.js';
 import { InitCommand } from './command/init/init-command.js';
+import { ListCommand } from './command/list/list-command.js';
 import { ResetCommand } from './command/reset/reset-command.js';
 import { AgkitPaths } from './config/agkit-paths.js';
 import { UserConfigStore } from './config/user-config-store.js';
@@ -13,10 +14,12 @@ import { HarnessRegistry } from './harness/harness-registry.js';
 import { OpencodeHarness } from './harness/opencode/opencode-harness.js';
 import { InteractiveRunner } from './interactive/interactive-runner.js';
 import { InquirerPromptService } from './prompt/inquirer-prompt-service.js';
+import { TemplateRepositoryLoader } from './template/template-repository-loader.js';
 
 const paths = new AgkitPaths();
 const configStore = new UserConfigStore(paths);
 const repositoryCache = new GitRepositoryCache(paths);
+const templateLoader = new TemplateRepositoryLoader();
 const harnessRegistry = new HarnessRegistry([
   new OpencodeHarness(),
   new AntigravityHarness(),
@@ -24,6 +27,7 @@ const harnessRegistry = new HarnessRegistry([
 
 const configCommand = new ConfigCommand(configStore, repositoryCache);
 const initCommand = new InitCommand(harnessRegistry);
+const listCommand = new ListCommand(configStore, repositoryCache, templateLoader);
 const resetCommand = new ResetCommand(paths);
 const interactiveRunner = new InteractiveRunner(
   configStore,
@@ -33,7 +37,7 @@ const interactiveRunner = new InteractiveRunner(
   initCommand,
 );
 
-const commands: readonly CliCommand[] = [configCommand, initCommand, resetCommand];
+const commands: readonly CliCommand[] = [configCommand, initCommand, listCommand, resetCommand];
 
 const program = new Command();
 
