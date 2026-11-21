@@ -18,6 +18,11 @@ const AVAILABLE_ACTIONS: readonly PromptChoice[] = [
     label: 'Configure template repository',
     description: 'Set or update the Git repository URL and default branch/tag',
   },
+  {
+    value: 'exit',
+    label: 'Exit',
+    description: 'Close agkit',
+  },
 ];
 
 export class InteractiveRunner {
@@ -89,6 +94,10 @@ export class InteractiveRunner {
 
     if (action === 'config') {
       await this.runConfiguration(config);
+      return;
+    }
+
+    if (action === 'exit') {
       return;
     }
 

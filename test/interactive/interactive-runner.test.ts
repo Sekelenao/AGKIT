@@ -134,6 +134,7 @@ describe('InteractiveRunner', () => {
     expect(capturedActions.map((c) => c.label)).toEqual([
       'Initialize a project',
       'Configure template repository',
+      'Exit',
     ]);
     expect(capturedModules.map((c) => c.value)).toEqual(['base']);
     expect(capturedHarnesses.map((c) => c.label)).toEqual([
@@ -191,5 +192,38 @@ describe('InteractiveRunner', () => {
     expect(await configStore.load()).toEqual({
       git_repository_url: remoteRepoUrl,
     });
+  });
+
+  it('exits cleanly when Exit is selected from the menu', async () => {
+    await configStore.save({ git_repository_url: remoteRepoUrl });
+
+    const stubPrompt: PromptService = {
+      async inputRepoUrl(): Promise<string> {
+        throw new Error('inputRepoUrl should not be called');
+      },
+      async inputDefaultRef(): Promise<string | undefined> {
+        throw new Error('inputDefaultRef should not be called');
+      },
+      async selectAction(): Promise<string> {
+        return 'exit';
+      },
+      async selectModules(): Promise<readonly string[]> {
+        throw new Error('selectModules should not be called');
+      },
+      async selectHarness(): Promise<string> {
+        throw new Error('selectHarness should not be called');
+      },
+    };
+
+    const runner = new InteractiveRunner(
+      configStore,
+      configCommand,
+      listCommand,
+      harnessRegistry,
+      stubPrompt,
+      initCommand,
+    );
+
+    await expect(runner.run(tempDir)).resolves.toBeUndefined();
   });
 });
