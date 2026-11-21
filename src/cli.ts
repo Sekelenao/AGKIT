@@ -14,24 +14,35 @@ import { HarnessRegistry } from './harness/harness-registry.js';
 import { OpencodeHarness } from './harness/opencode/opencode-harness.js';
 import { InteractiveRunner } from './interactive/interactive-runner.js';
 import { InquirerPromptService } from './prompt/inquirer-prompt-service.js';
+import { ModuleComposer } from './template/module-composer.js';
 import { TemplateRepositoryLoader } from './template/template-repository-loader.js';
+import { TerminalSpinner } from './ui/terminal-spinner.js';
 
 const paths = new AgkitPaths();
 const configStore = new UserConfigStore(paths);
-const repositoryCache = new GitRepositoryCache(paths);
+const progressReporter = new TerminalSpinner();
+const repositoryCache = new GitRepositoryCache(paths, progressReporter);
 const templateLoader = new TemplateRepositoryLoader();
+const moduleComposer = new ModuleComposer();
 const harnessRegistry = new HarnessRegistry([
   new OpencodeHarness(),
   new AntigravityHarness(),
 ]);
 
 const configCommand = new ConfigCommand(configStore, repositoryCache);
-const initCommand = new InitCommand(harnessRegistry);
+const initCommand = new InitCommand(
+  harnessRegistry,
+  configStore,
+  repositoryCache,
+  templateLoader,
+  moduleComposer,
+);
 const listCommand = new ListCommand(configStore, repositoryCache, templateLoader);
 const resetCommand = new ResetCommand(paths);
 const interactiveRunner = new InteractiveRunner(
   configStore,
   configCommand,
+  listCommand,
   harnessRegistry,
   new InquirerPromptService(),
   initCommand,

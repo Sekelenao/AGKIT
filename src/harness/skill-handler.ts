@@ -1,4 +1,13 @@
+export interface SkillFileEntry {
+  readonly relativePath: string;
+  readonly content: string;
+}
+
 export interface SkillHandler {
-  relativePath(skillName: string): string;
-  write(targetDir: string, skillName: string, content: string): Promise<string>;
+  relativePath(skillName: string, fileRelativePath?: string): string;
+  write(
+    targetDir: string,
+    skillName: string,
+    files: readonly SkillFileEntry[],
+  ): Promise<readonly string[]>;
 }

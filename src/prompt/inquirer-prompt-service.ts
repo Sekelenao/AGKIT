@@ -1,5 +1,5 @@
 import { ExitPromptError } from '@inquirer/core';
-import { input, select } from '@inquirer/prompts';
+import { checkbox, input, select } from '@inquirer/prompts';
 import { PromptCancelledError } from './prompt-cancelled-error.js';
 import type { PromptChoice, PromptService } from './prompt-service.js';
 
@@ -10,6 +10,22 @@ export class InquirerPromptService implements PromptService {
 
   async selectHarness(choices: readonly PromptChoice[]): Promise<string> {
     return this.runSelect('Select target AI harness', choices);
+  }
+
+  async selectModules(choices: readonly PromptChoice[]): Promise<readonly string[]> {
+    return this.wrapCancel(() =>
+      checkbox({
+        message: 'Select template module(s)',
+        required: true,
+        choices: choices.map((choice) => ({
+          name: choice.label,
+          value: choice.value,
+          ...(choice.description === undefined
+            ? {}
+            : { description: choice.description }),
+        })),
+      }),
+    );
   }
 
   async inputRepoUrl(currentUrl?: string): Promise<string> {

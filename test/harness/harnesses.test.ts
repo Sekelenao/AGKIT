@@ -48,15 +48,19 @@ describe('Harness default handlers', () => {
     }) => {
       const harness = createHarness();
 
-      const skillPath = await harness.skills.write(tempDir, 'testing', '# Testing Skill');
+      const skillPaths = await harness.skills.write(tempDir, 'testing', [
+        { relativePath: 'SKILL.md', content: '# Testing Skill' },
+      ]);
       const agentPath = await harness.agents.write(tempDir, 'reviewer', '# Reviewer Agent');
       const rootPath = await harness.rootInstructions.write(tempDir, '# Root Instructions');
 
-      expect(skillPath).toBe(expectedSkillPath);
+      expect(skillPaths).toEqual([expectedSkillPath]);
       expect(agentPath).toBe(expectedAgentPath);
       expect(rootPath).toBe(expectedRootInstructionsPath);
 
-      await expect(readFile(join(tempDir, skillPath), 'utf8')).resolves.toBe('# Testing Skill');
+      await expect(readFile(join(tempDir, expectedSkillPath), 'utf8')).resolves.toBe(
+        '# Testing Skill',
+      );
       await expect(readFile(join(tempDir, agentPath), 'utf8')).resolves.toBe('# Reviewer Agent');
       await expect(readFile(join(tempDir, rootPath), 'utf8')).resolves.toBe('# Root Instructions');
     },

@@ -1,9 +1,11 @@
 import type { ConfigCommand } from '../command/config/config-command.js';
 import type { InitCommand } from '../command/init/init-command.js';
+import type { ListCommand } from '../command/list/list-command.js';
 import type { UserConfig } from '../config/user-config.js';
 import type { UserConfigStore } from '../config/user-config-store.js';
 import type { HarnessRegistry } from '../harness/harness-registry.js';
 import type { PromptChoice, PromptService } from '../prompt/prompt-service.js';
+import { TemplateRepositoryError } from '../template/template-repository-error.js';
 
 const AVAILABLE_ACTIONS: readonly PromptChoice[] = [
   {
@@ -21,6 +23,7 @@ const AVAILABLE_ACTIONS: readonly PromptChoice[] = [
 export class InteractiveRunner {
   private readonly configStore: UserConfigStore;
   private readonly configCommand: ConfigCommand;
+  private readonly listCommand: ListCommand;
   private readonly harnessRegistry: HarnessRegistry;
   private readonly promptService: PromptService;
   private readonly initCommand: InitCommand;
@@ -28,12 +31,14 @@ export class InteractiveRunner {
   constructor(
     configStore: UserConfigStore,
     configCommand: ConfigCommand,
+    listCommand: ListCommand,
     harnessRegistry: HarnessRegistry,
     promptService: PromptService,
     initCommand: InitCommand,
   ) {
     this.configStore = configStore;
     this.configCommand = configCommand;
+    this.listCommand = listCommand;
     this.harnessRegistry = harnessRegistry;
     this.promptService = promptService;
     this.initCommand = initCommand;
@@ -49,6 +54,20 @@ export class InteractiveRunner {
     const action = await this.promptService.selectAction(AVAILABLE_ACTIONS);
 
     if (action === 'init') {
+      const { modules } = await this.listCommand.execute();
+      if (modules.length === 0) {
+        throw new TemplateRepositoryError(
+          'No template modules found in the configured repository.',
+        );
+      }
+
+      const moduleChoices: readonly PromptChoice[] = modules.map((mod) => ({
+        value: mod.id,
+        label: `${mod.displayName} (${mod.id})`,
+        description: mod.description,
+      }));
+      const moduleIds = await this.promptService.selectModules(moduleChoices);
+
       const harnessChoices: readonly PromptChoice[] = this.harnessRegistry
         .listAll()
         .map((harness) => ({
@@ -56,7 +75,11 @@ export class InteractiveRunner {
           label: harness.displayName,
         }));
       const harnessName = await this.promptService.selectHarness(harnessChoices);
-      const result = await this.initCommand.execute({ targetDir, harnessName });
+      const result = await this.initCommand.execute({
+        targetDir,
+        harnessName,
+        moduleIds,
+      });
 
       for (const file of result.writtenFiles) {
         console.log(`Created ${file}`);

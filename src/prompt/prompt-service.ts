@@ -7,6 +7,7 @@ export interface PromptChoice {
 export interface PromptService {
   selectAction(choices: readonly PromptChoice[]): Promise<string>;
   selectHarness(choices: readonly PromptChoice[]): Promise<string>;
+  selectModules(choices: readonly PromptChoice[]): Promise<readonly string[]>;
   inputRepoUrl(currentUrl?: string): Promise<string>;
   inputDefaultRef(currentRef?: string): Promise<string | undefined>;
 }

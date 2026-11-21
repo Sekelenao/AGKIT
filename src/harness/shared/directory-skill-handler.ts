@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import type { SkillHandler } from '../skill-handler.js';
+import type { SkillFileEntry, SkillHandler } from '../skill-handler.js';
 
 export class DirectorySkillHandler implements SkillHandler {
   private readonly skillsRootDir: string;
@@ -9,17 +9,27 @@ export class DirectorySkillHandler implements SkillHandler {
     this.skillsRootDir = skillsRootDir;
   }
 
-  relativePath(skillName: string): string {
-    return join(this.skillsRootDir, skillName, 'SKILL.md');
+  relativePath(skillName: string, fileRelativePath = 'SKILL.md'): string {
+    const segments = fileRelativePath.split('/').filter((segment) => segment.length > 0);
+    return join(this.skillsRootDir, skillName, ...segments);
   }
 
-  async write(targetDir: string, skillName: string, content: string): Promise<string> {
-    const relative = this.relativePath(skillName);
-    const absolute = join(targetDir, relative);
+  async write(
+    targetDir: string,
+    skillName: string,
+    files: readonly SkillFileEntry[],
+  ): Promise<readonly string[]> {
+    const writtenPaths: string[] = [];
 
-    await mkdir(dirname(absolute), { recursive: true });
-    await writeFile(absolute, content, 'utf8');
+    for (const file of files) {
+      const relative = this.relativePath(skillName, file.relativePath);
+      const absolute = join(targetDir, relative);
 
-    return relative;
+      await mkdir(dirname(absolute), { recursive: true });
+      await writeFile(absolute, file.content, 'utf8');
+      writtenPaths.push(relative);
+    }
+
+    return writtenPaths;
   }
 }
