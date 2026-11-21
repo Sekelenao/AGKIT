@@ -2,34 +2,46 @@ import { access, mkdir, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { type SimpleGit, simpleGit } from 'simple-git';
 import type { AgkitPaths } from '../config/agkit-paths.js';
+import type { ProgressReporter } from '../ui/progress-reporter.js';
+import { SilentProgressReporter } from '../ui/silent-progress-reporter.js';
 import { GitCommandError } from './git-command-error.js';
 
 export class GitRepositoryCache {
   private readonly paths: AgkitPaths;
+  private readonly progress: ProgressReporter;
 
-  constructor(paths: AgkitPaths) {
+  constructor(
+    paths: AgkitPaths,
+    progress: ProgressReporter = new SilentProgressReporter(),
+  ) {
     this.paths = paths;
+    this.progress = progress;
   }
 
   async sync(repoUrl: string, ref?: string): Promise<string> {
     const repoDir = this.paths.repoCacheDir;
     const isReusable = await this.isMatchingClone(repoDir, repoUrl);
+    const statusMessage = isReusable
+      ? 'Syncing template repository...'
+      : 'Cloning template repository...';
 
-    if (!isReusable) {
-      await rm(repoDir, { recursive: true, force: true });
-      await mkdir(dirname(repoDir), { recursive: true });
-      await this.runOperation('clone', () =>
-        this.createGit().clone(repoUrl, repoDir),
-      );
-    } else {
-      const git = this.createGit(repoDir);
-      await this.runOperation('fetch', () =>
-        git.fetch('origin', ['--tags', '--prune']),
-      );
-    }
+    return this.progress.run(statusMessage, async () => {
+      if (!isReusable) {
+        await rm(repoDir, { recursive: true, force: true });
+        await mkdir(dirname(repoDir), { recursive: true });
+        await this.runOperation('clone', () =>
+          this.createGit().clone(repoUrl, repoDir),
+        );
+      } else {
+        const git = this.createGit(repoDir);
+        await this.runOperation('fetch', () =>
+          git.fetch('origin', ['--tags', '--prune']),
+        );
+      }
 
-    await this.checkoutRef(this.createGit(repoDir), ref);
-    return repoDir;
+      await this.checkoutRef(this.createGit(repoDir), ref);
+      return repoDir;
+    });
   }
 
   private createGit(baseDir?: string): SimpleGit {
