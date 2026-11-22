@@ -2,10 +2,10 @@ import { access, mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import type { Command } from 'commander';
 import type { HarnessRegistry } from '../../harness/harness-registry.js';
-import type { TemplateSkill } from '../../template/template-module.js';
 import { TemplateRepositoryError } from '../../template/template-repository-error.js';
 import { OutputFormatter } from '../../ui/output-formatter.js';
 import type { CliCommand } from '../cli-command.js';
+import { AUTHORING_SKILLS } from './authoring-skills.js';
 
 export interface NewOptions {
   readonly targetDir: string;
@@ -25,33 +25,6 @@ interface ScaffoldFile {
   readonly relativePath: string;
   readonly content: string;
 }
-
-const AUTHORING_SKILL: TemplateSkill = {
-  name: 'agkit-template-authoring',
-  description:
-    'Authoring and validating modules, skills, and agents in an AGKIT template repository. Always run agkit spec first.',
-  instructions: `# AGKIT Template Authoring
-
-Before creating, modifying, or validating modules, skills, or agents in this repository, always run:
-
-\`\`\`bash
-agkit spec
-\`\`\`
-
-Treat the output of \`agkit spec\` as the single source of truth for:
-
-- Directory layout under \`modules/\`
-- JSON schemas (\`module.json\`, \`skill.json\`, \`agent.json\`)
-- Composition rules and fail-fast collision invariants
-
-## Core Rules
-
-1. Keep \`ROOT.md\`, \`SKILL.md\`, and \`PROMPT.md\` as pure Markdown without manual YAML frontmatter — \`agkit\` generates harness-specific frontmatter automatically.
-2. Use lowercase \`kebab-case\` names for all module, skill, and agent directories.
-3. Give skills and agents distinct IDs across modules that users may combine together (duplicate IDs fail fast during composition).
-`,
-  companionFiles: [],
-};
 
 const STARTER_FILES: readonly ScaffoldFile[] = [
   {
@@ -188,9 +161,11 @@ export class NewCommand implements CliCommand {
       writtenFiles.push(file.relativePath);
     }
 
-    const writtenSkillFiles = await harness.skills.write(options.targetDir, AUTHORING_SKILL);
-    for (const skillFile of writtenSkillFiles) {
-      writtenFiles.push(skillFile.relativePath);
+    for (const skill of AUTHORING_SKILLS) {
+      const writtenSkillFiles = await harness.skills.write(options.targetDir, skill);
+      for (const skillFile of writtenSkillFiles) {
+        writtenFiles.push(skillFile.relativePath);
+      }
     }
 
     return {

@@ -57,7 +57,7 @@ agkit
 ### Scriptable CLI Commands
 
 ```bash
-# 1. Create a new template repository (with a built-in AI authoring skill)
+# 1. Create a new template repository (with built-in AI authoring skills)
 agkit new --harness opencode
 
 # 2. Point agkit to your central template Git repository

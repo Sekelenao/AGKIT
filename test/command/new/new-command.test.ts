@@ -30,7 +30,7 @@ describe('NewCommand', () => {
     await rm(tempDir, { recursive: true, force: true });
   });
 
-  it('scaffolds a valid template repository and installs the authoring skill for the selected harness', async () => {
+  it('scaffolds a valid template repository and installs the authoring skills for the selected harness', async () => {
     const result = await command.execute({
       targetDir: tempDir,
       harnessName: 'agy',
@@ -39,16 +39,22 @@ describe('NewCommand', () => {
     expect(result.harnessName).toBe('antigravity');
     expect(result.writtenFiles).toContain('README.md');
     expect(result.writtenFiles).toContain(join('modules', 'example', 'module.json'));
-    expect(result.writtenFiles).toContain(
-      join('.agents', 'skills', 'agkit-template-authoring', 'SKILL.md'),
-    );
 
-    const authoringSkill = await readFile(
-      join(tempDir, '.agents', 'skills', 'agkit-template-authoring', 'SKILL.md'),
-      'utf8',
-    );
-    expect(authoringSkill).toContain('name: agkit-template-authoring');
-    expect(authoringSkill).toContain('agkit spec');
+    const expectedSkills = [
+      'agkit-template-authoring',
+      'agkit-root-authoring',
+      'agkit-skill-authoring',
+      'agkit-agent-authoring',
+    ];
+
+    for (const skillName of expectedSkills) {
+      const relativeSkillPath = join('.agents', 'skills', skillName, 'SKILL.md');
+      expect(result.writtenFiles).toContain(relativeSkillPath);
+
+      const content = await readFile(join(tempDir, relativeSkillPath), 'utf8');
+      expect(content).toContain(`name: ${skillName}`);
+      expect(content).toContain('agkit spec');
+    }
 
     const loader = new TemplateRepositoryLoader();
     const modules = await loader.loadAll(tempDir);
