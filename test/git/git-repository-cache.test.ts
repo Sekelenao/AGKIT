@@ -106,6 +106,31 @@ describe('GitRepositoryCache', () => {
     expect(cacheDir).toBe(join(tempDir, '.agkit', 'cache', 'repo'));
   });
 
+  it('resolves origin/HEAD and checks out files after an initially empty repository receives its first commit', async () => {
+    const remoteDir = join(tempDir, 'initially-empty.git');
+    const workDir = join(tempDir, 'initially-empty-work');
+    await mkdir(remoteDir, { recursive: true });
+    await mkdir(workDir, { recursive: true });
+    await simpleGit(remoteDir).init(true, ['--initial-branch=main']);
+
+    const cacheDir = await cache.sync(remoteDir);
+
+    const workGit = simpleGit(workDir);
+    await workGit.init(['--initial-branch=main']);
+    await workGit.addConfig('user.name', 'Test User');
+    await workGit.addConfig('user.email', 'test@example.com');
+    await workGit.addRemote('origin', remoteDir);
+    await writeFile(join(workDir, 'README.md'), 'first commit', 'utf8');
+    await workGit.add('README.md');
+    await workGit.commit('initial commit');
+    await workGit.push(['-u', 'origin', 'main']);
+
+    await cache.sync(remoteDir);
+    expect(await readFile(join(cacheDir, 'README.md'), 'utf8')).toBe(
+      'first commit',
+    );
+  });
+
   it('throws a clear GitCommandError when the requested branch or tag does not exist', async () => {
     const { remoteDir } = await createLocalRemoteRepo(tempDir, 'refs', 'v1');
 

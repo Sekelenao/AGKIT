@@ -107,11 +107,32 @@ export class GitRepositoryCache {
   }
 
   private async resolveOriginHead(git: SimpleGit): Promise<string | undefined> {
+    const existingHead = await this.readValidOriginHead(git);
+    if (existingHead !== undefined) {
+      return existingHead;
+    }
+
+    try {
+      await git.raw(['remote', 'set-head', 'origin', '--auto']);
+    } catch {
+      return undefined;
+    }
+
+    return this.readValidOriginHead(git);
+  }
+
+  private async readValidOriginHead(
+    git: SimpleGit,
+  ): Promise<string | undefined> {
     try {
       const ref = (
         await git.raw(['symbolic-ref', '--quiet', 'refs/remotes/origin/HEAD'])
       ).trim();
-      return ref.length > 0 ? ref : undefined;
+      if (ref.length === 0) {
+        return undefined;
+      }
+      await git.revparse(['--verify', `${ref}^{commit}`]);
+      return ref;
     } catch {
       return undefined;
     }
