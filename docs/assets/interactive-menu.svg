@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="390" viewBox="0 0 760 390" role="img" aria-label="AGKIT interactive terminal menu">
+  <defs>
+    <style>
+      .bg { fill: #09090B; }
+      .bar { fill: #18181B; }
+      .border { fill: none; stroke: #27272A; stroke-width: 1; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 13.5px; }
+      .title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 12px; fill: #71717A; }
+      .accent { fill: #34D399; }
+      .accent-bold { fill: #34D399; font-weight: 700; }
+      .bright { fill: #FAFAFA; }
+      .bright-bold { fill: #FAFAFA; font-weight: 700; }
+      .secondary { fill: #A1A1AA; }
+      .muted { fill: #71717A; }
+      .dim { fill: #52525B; }
+      .rail { fill: #3F3F46; }
+    </style>
+  </defs>
+
+  <rect x="1" y="1" width="758" height="388" rx="10" class="bg" />
+  <path d="M11,1 H749 A10,10 0 0 1 759,11 V36 H1 V11 A10,10 0 0 1 11,1 Z" class="bar" />
+  <rect x="1" y="1" width="758" height="388" rx="10" class="border" />
+
+  <circle cx="22" cy="19" r="5.5" fill="#EF4444" opacity="0.85" />
+  <circle cx="40" cy="19" r="5.5" fill="#F59E0B" opacity="0.85" />
+  <circle cx="58" cy="19" r="5.5" fill="#10B981" opacity="0.85" />
+  <text x="380" y="23" text-anchor="middle" class="title">agkit — ~/projects/orders-service</text>
+
+  <g class="mono" transform="translate(26, 66)">
+    <text y="0">
+      <tspan class="accent-bold">◆ AGKIT</tspan>
+      <tspan class="accent">  v0.1.0</tspan>
+      <tspan class="muted">  AI Harness Templates</tspan>
+    </text>
+    <text y="22" class="rail">──────────────────────────────────────────────────────────────</text>
+    <text y="44">
+      <tspan class="dim">repo </tspan>
+      <tspan class="secondary">git@github.com:org/ai-templates.git</tspan>
+      <tspan class="dim"> (main)  ·  dir </tspan>
+      <tspan class="secondary">~/projects/orders-service</tspan>
+    </text>
+
+    <text y="84">
+      <tspan class="accent">◆</tspan>
+      <tspan class="bright-bold">  What would you like to do?</tspan>
+    </text>
+    <text y="106" class="rail">│</text>
+    <text y="128">
+      <tspan class="rail">│</tspan>
+      <tspan class="accent-bold">  ❯ </tspan>
+      <tspan class="bright">Apply templates to this project</tspan>
+    </text>
+    <text y="150">
+      <tspan class="rail">│</tspan>
+      <tspan class="muted">    Update templates in this project</tspan>
+    </text>
+    <text y="172">
+      <tspan class="rail">│</tspan>
+      <tspan class="muted">    Create a template repository</tspan>
+    </text>
+    <text y="194">
+      <tspan class="rail">│</tspan>
+      <tspan class="muted">    Configuration</tspan>
+    </text>
+    <text y="216">
+      <tspan class="rail">│</tspan>
+      <tspan class="muted">    Exit</tspan>
+    </text>
+    <text y="238" class="rail">│</text>
+    <text y="260">
+      <tspan class="rail">└</tspan>
+      <tspan class="muted">  Generate AI templates in the current directory</tspan>
+    </text>
+    <text y="294" class="dim">   ↑↓ navigate  ·  enter confirm  ·  esc quit</text>
+  </g>
+</svg>

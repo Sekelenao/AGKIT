@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="410" viewBox="0 0 760 410" role="img" aria-label="AGKIT sync conflict diff preview">
+  <defs>
+    <style>
+      .bg { fill: #09090B; }
+      .bar { fill: #18181B; }
+      .border { fill: none; stroke: #27272A; stroke-width: 1; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 13.5px; }
+      .title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 12px; fill: #71717A; }
+      .accent-bold { fill: #34D399; font-weight: 700; }
+      .bright { fill: #FAFAFA; }
+      .warning { fill: #F59E0B; }
+      .warning-bold { fill: #F59E0B; font-weight: 700; }
+      .success { fill: #10B981; }
+      .error { fill: #EF4444; }
+      .muted { fill: #71717A; }
+      .dim { fill: #52525B; }
+      .rail { fill: #3F3F46; }
+    </style>
+  </defs>
+
+  <rect x="1" y="1" width="758" height="408" rx="10" class="bg" />
+  <path d="M11,1 H749 A10,10 0 0 1 759,11 V36 H1 V11 A10,10 0 0 1 11,1 Z" class="bar" />
+  <rect x="1" y="1" width="758" height="408" rx="10" class="border" />
+
+  <circle cx="22" cy="19" r="5.5" fill="#EF4444" opacity="0.85" />
+  <circle cx="40" cy="19" r="5.5" fill="#F59E0B" opacity="0.85" />
+  <circle cx="58" cy="19" r="5.5" fill="#10B981" opacity="0.85" />
+  <text x="380" y="23" text-anchor="middle" class="title">agkit sync — conflict resolution</text>
+
+  <g class="mono" transform="translate(26, 66)">
+    <text y="0">
+      <tspan class="warning">▲</tspan>
+      <tspan class="warning-bold">  Conflict detected on "AGENTS.md". How should it be resolved?</tspan>
+    </text>
+    <text y="22" class="rail">│</text>
+    <text y="44">
+      <tspan class="rail">│</tspan>
+      <tspan class="dim">  ─ local → upstream</tspan>
+    </text>
+    <text y="66">
+      <tspan class="rail">│</tspan>
+      <tspan class="muted">    - Prefer small, cohesive, well-tested changes.</tspan>
+    </text>
+    <text y="88">
+      <tspan class="rail">│</tspan>
+      <tspan class="error">  − - Keep local custom rule for this service.</tspan>
+    </text>
+    <text y="110">
+      <tspan class="rail">│</tspan>
+      <tspan class="success">  + - Keep public interfaces strictly typed at I/O boundaries.</tspan>
+    </text>
+    <text y="132">
+      <tspan class="rail">│</tspan>
+      <tspan class="success">  + - Favor explicit domain errors over silent fallbacks.</tspan>
+    </text>
+    <text y="154">
+      <tspan class="rail">│</tspan>
+      <tspan class="muted">    - Never commit secrets or credentials.</tspan>
+    </text>
+    <text y="176" class="rail">│</text>
+    <text y="198">
+      <tspan class="rail">│</tspan>
+      <tspan class="muted">    Keep local version</tspan>
+    </text>
+    <text y="220">
+      <tspan class="rail">│</tspan>
+      <tspan class="muted">    Overwrite with upstream</tspan>
+    </text>
+    <text y="242">
+      <tspan class="rail">│</tspan>
+      <tspan class="accent-bold">  ❯ </tspan>
+      <tspan class="bright">Backup local (.bak) and apply upstream</tspan>
+    </text>
+    <text y="264" class="rail">│</text>
+    <text y="286">
+      <tspan class="rail">└</tspan>
+      <tspan class="muted">  Save local file as .bak before applying upstream</tspan>
+    </text>
+    <text y="320" class="dim">   ↑↓ navigate  ·  enter confirm  ·  esc back</text>
+  </g>
+</svg>

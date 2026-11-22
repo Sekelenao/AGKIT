@@ -1,26 +1,15 @@
 # Agent's guide
 
-Orientation summary and directory map for AI agents collaborating on the AGKIT codebase.
-
-Before performing any task, agents must consult and apply the relevant skills in `.agents/skills/`.
+Before performing any task, consult and apply the relevant skills in `.agents/skills/`.
 
 ## References
 
 - Template repository specification: `docs/template-repository.md`
-- Skills directory: `.agents/skills/`
-- Specialized subagents directory: `.agents/agents/`
+- Skills: `.agents/skills/`
+- Subagents: `.agents/agents/`
 
-## Project Architecture
+## Architectural Invariants
 
-- `src/cli.ts`: Sole composition root; wires services, registers commands, runs `InteractiveRunner` when invoked without subcommands, and handles `CliError` globally.
-- `src/command/<name>/`: Pure CLI commands implementing `CliCommand` (no interactive prompts, zero `PromptService` dependency).
-- `src/interactive/`: Interactive menu flow (`agkit` with no arguments), delegating to commands.
-- `src/prompt/`: `PromptService` abstraction and `@inquirer/prompts` adapter.
-- `src/harness/`: `Harness` and capability handler interfaces, shared reusable handlers in `src/harness/shared/`, and one dedicated folder per harness (`src/harness/opencode/`, `src/harness/antigravity/`).
-- `src/config/`: `AgkitPaths` (`~/.agkit/`), Zod schemas, and stores.
-- `src/git/`: Git repository cache backed by `simple-git` (`GIT_TERMINAL_PROMPT=0`).
-- `src/error/`: Base `CliError` carrying `exitCode` and shared CLI error subclasses.
-
-## Dependency Policy
-
-- Standard Libraries Only: Only add widely adopted, actively maintained libraries (`commander`, `@inquirer/prompts`, `chalk`, `zod`, `simple-git`, `vitest`). Avoid obscure or niche packages.
+- **Single composition root**: Wire services, commands, and harnesses in `src/cli.ts` via constructor dependency injection.
+- **Pure CLI commands**: Commands under `src/command/` must remain scriptable with zero dependency on `PromptService`; interactive flows belong in `src/interactive/`.
+- **Standard dependencies only**: Only add widely adopted, actively maintained libraries (`commander`, `@inquirer/prompts`, `chalk`, `zod`, `simple-git`, `vitest`). Avoid obscure or niche packages.
