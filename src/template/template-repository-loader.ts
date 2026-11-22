@@ -58,7 +58,6 @@ export class TemplateRepositoryLoader {
       modules.push(await this.loadModule(join(modulesRoot, moduleId), moduleId));
     }
 
-    this.validateGraph(modules);
     return modules;
   }
 
@@ -79,7 +78,6 @@ export class TemplateRepositoryLoader {
       id: moduleId,
       displayName: manifest.display_name,
       description: manifest.description,
-      extends: manifest.extends,
       rootInstructions,
       skills,
       agents,
@@ -253,50 +251,6 @@ export class TemplateRepositoryLoader {
     }
 
     return files;
-  }
-
-  private validateGraph(modules: readonly TemplateModule[]): void {
-    const modulesById = new Map<string, TemplateModule>();
-    for (const mod of modules) {
-      modulesById.set(mod.id, mod);
-    }
-
-    for (const mod of modules) {
-      for (const parentId of mod.extends) {
-        if (!modulesById.has(parentId)) {
-          throw new TemplateRepositoryError(
-            `Module "${mod.id}" extends unknown module "${parentId}".`,
-          );
-        }
-      }
-    }
-
-    const visited = new Set<string>();
-    const visiting = new Set<string>();
-
-    const visit = (moduleId: string, trail: readonly string[]): void => {
-      if (visited.has(moduleId)) {
-        return;
-      }
-      if (visiting.has(moduleId)) {
-        const cycle = [...trail, moduleId].join(' -> ');
-        throw new TemplateRepositoryError(`Circular module dependency detected: ${cycle}.`);
-      }
-
-      visiting.add(moduleId);
-      const mod = modulesById.get(moduleId);
-      if (mod !== undefined) {
-        for (const parentId of mod.extends) {
-          visit(parentId, [...trail, moduleId]);
-        }
-      }
-      visiting.delete(moduleId);
-      visited.add(moduleId);
-    };
-
-    for (const mod of modules) {
-      visit(mod.id, []);
-    }
   }
 
   private async readRequiredDirectory(

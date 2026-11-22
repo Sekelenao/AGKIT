@@ -11,7 +11,6 @@ describe('ModuleComposer', () => {
       id: 'base',
       displayName: 'Base',
       description: 'Shared baseline',
-      extends: [],
       rootInstructions: '# Base\n\nCommon rules.\n',
       skills: [
         {
@@ -41,7 +40,6 @@ describe('ModuleComposer', () => {
       id: 'java-base',
       displayName: 'Java Base',
       description: 'Java conventions',
-      extends: ['base'],
       rootInstructions: '## Java\n\nUse Java 21.\n',
       skills: [],
       agents: [],
@@ -50,11 +48,10 @@ describe('ModuleComposer', () => {
       id: 'flink',
       displayName: 'Flink',
       description: 'Flink rules',
-      extends: ['java-base'],
       rootInstructions: '## Flink\n\nAvoid blocking calls.\n',
       skills: [
         {
-          name: 'testing',
+          name: 'flink-testing',
           description: 'Flink testing',
           instructions: '# Flink Testing',
           companionFiles: [],
@@ -62,7 +59,7 @@ describe('ModuleComposer', () => {
       ],
       agents: [
         {
-          name: 'reviewer',
+          name: 'flink-reviewer',
           displayName: 'Flink Reviewer',
           description: 'Reviews Flink jobs',
           capabilities: ['read', 'skill'],
@@ -74,7 +71,6 @@ describe('ModuleComposer', () => {
       id: 'front',
       displayName: 'Frontend',
       description: 'Frontend rules',
-      extends: ['base'],
       rootInstructions: undefined,
       skills: [
         {
@@ -96,14 +92,14 @@ describe('ModuleComposer', () => {
     },
   ];
 
-  it('resolves diamond dependencies deterministically and deduplicates shared ancestors', () => {
-    const order = composer.resolveOrder(modules, ['flink', 'front']);
+  it('resolves selected modules in selection order and deduplicates repeated IDs', () => {
+    const order = composer.resolveOrder(modules, ['base', 'java-base', 'flink', 'base', 'front']);
 
     expect(order.map((mod) => mod.id)).toEqual(['base', 'java-base', 'flink', 'front']);
   });
 
-  it('concatenates ROOT.md in layer order and overrides skills (whole directory) and agents by name', () => {
-    const composed = composer.compose(modules, ['flink', 'front']);
+  it('concatenates ROOT.md in selection order and combines distinct skills and agents', () => {
+    const composed = composer.compose(modules, ['base', 'java-base', 'flink', 'front']);
 
     expect(composed.rootInstructions).toBe(
       '# Base\n\nCommon rules.\n\n## Java\n\nUse Java 21.\n\n## Flink\n\nAvoid blocking calls.\n',
@@ -111,14 +107,20 @@ describe('ModuleComposer', () => {
     expect(composed.skills).toEqual([
       {
         name: 'testing',
-        description: 'Flink testing',
-        instructions: '# Flink Testing',
-        companionFiles: [],
+        description: 'Base testing',
+        instructions: '# Base Testing',
+        companionFiles: [{ relativePath: 'references/legacy.md', content: 'old ref' }],
       },
       {
         name: 'git',
         description: 'Git rules',
         instructions: '# Git',
+        companionFiles: [],
+      },
+      {
+        name: 'flink-testing',
+        description: 'Flink testing',
+        instructions: '# Flink Testing',
         companionFiles: [],
       },
       {
@@ -131,6 +133,13 @@ describe('ModuleComposer', () => {
     expect(composed.agents).toEqual([
       {
         name: 'reviewer',
+        displayName: 'Base Reviewer',
+        description: 'Reviews code',
+        capabilities: ['read'],
+        prompt: '# Base Reviewer',
+      },
+      {
+        name: 'flink-reviewer',
         displayName: 'Flink Reviewer',
         description: 'Reviews Flink jobs',
         capabilities: ['read', 'skill'],
@@ -144,6 +153,70 @@ describe('ModuleComposer', () => {
         prompt: '# UI Auditor',
       },
     ]);
+  });
+
+  it('deduplicates repeated module IDs without reporting self-collisions', () => {
+    const composed = composer.compose(modules, ['base', 'base']);
+
+    expect(composed.resolvedModules.map((mod) => mod.id)).toEqual(['base']);
+    expect(composed.skills.map((skill) => skill.name)).toEqual(['testing', 'git']);
+  });
+
+  it('throws TemplateRepositoryError when multiple selected modules define the same skill ID', () => {
+    const collidingModules: readonly TemplateModule[] = [
+      ...modules,
+      {
+        id: 'dup-skill',
+        displayName: 'Dup Skill',
+        description: 'Colliding skill',
+        rootInstructions: undefined,
+        skills: [
+          {
+            name: 'testing',
+            description: 'Duplicate testing',
+            instructions: '# Dup',
+            companionFiles: [],
+          },
+        ],
+        agents: [],
+      },
+    ];
+
+    expect(() => composer.compose(collidingModules, ['base', 'dup-skill'])).toThrow(
+      TemplateRepositoryError,
+    );
+    expect(() => composer.compose(collidingModules, ['base', 'dup-skill'])).toThrow(
+      'Skill "testing" is defined in multiple selected modules: base, dup-skill',
+    );
+  });
+
+  it('throws TemplateRepositoryError when multiple selected modules define the same agent ID', () => {
+    const collidingModules: readonly TemplateModule[] = [
+      ...modules,
+      {
+        id: 'dup-agent',
+        displayName: 'Dup Agent',
+        description: 'Colliding agent',
+        rootInstructions: undefined,
+        skills: [],
+        agents: [
+          {
+            name: 'reviewer',
+            displayName: 'Duplicate Reviewer',
+            description: 'Duplicate reviewer',
+            capabilities: ['read'],
+            prompt: '# Dup',
+          },
+        ],
+      },
+    ];
+
+    expect(() => composer.compose(collidingModules, ['base', 'dup-agent'])).toThrow(
+      TemplateRepositoryError,
+    );
+    expect(() => composer.compose(collidingModules, ['base', 'dup-agent'])).toThrow(
+      'Agent "reviewer" is defined in multiple selected modules: base, dup-agent',
+    );
   });
 
   it('throws TemplateRepositoryError when selecting an unknown module ID', () => {

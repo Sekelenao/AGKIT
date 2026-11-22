@@ -45,8 +45,8 @@ templates-repo/
 
 - `agkit` discovers modules automatically by scanning immediate subdirectories of `modules/`.
 - There is no central catalog file: each module, skill, and agent directory is self-describing via its JSON manifest.
-- Every module under `modules/` is selectable by users.
-- There is no implicit or magic `base` module: if a module builds on `base`, it must declare `"extends": ["base"]` explicitly.
+- Every module under `modules/` is independent and selectable by users.
+- There is no implicit `base` module and no module inheritance: users explicitly select the exact combination of modules they want.
 
 ## 2. Schemas (`snake_case` JSON validated by Zod)
 
@@ -58,7 +58,6 @@ All IDs (`<module-id>`, `<skill-id>`, `<agent-id>`) are derived from their direc
 | --- | --- | --- | --- |
 | `display_name` | `string` (non-empty) | Yes | Human-readable name displayed in `agkit list` and interactive menus. |
 | `description` | `string` (non-empty) | Yes | Short summary of what the module provides. |
-| `extends` | `string[]` (kebab-case IDs) | No | Ordered list of parent module IDs. Defaults to `[]`. |
 
 ### `skills/<skill-id>/skill.json`
 
@@ -81,8 +80,8 @@ All IDs (`<module-id>`, `<skill-id>`, `<agent-id>`) are derived from their direc
 Inside `modules/<module-id>/`, all artifact directories and files are optional except `module.json`:
 
 | Path inside module | Required | Semantics |
-| --- | --- | --- |
-| `module.json` | Yes | Module metadata and parent dependencies (`extends`). |
+| ---          | --- | --- |
+| `module.json` | Yes | Module metadata (`display_name`, `description`). |
 | `ROOT.md` | No | Pure Markdown root instructions contributed by this module. |
 | `skills/<skill-id>/` | No | Must contain `skill.json` and `SKILL.md` (pure Markdown). Optional companion files (`references/`, `scripts/`, etc.) are copied as-is. |
 | `agents/<agent-id>/` | No | Must contain `agent.json` and `PROMPT.md` (pure Markdown). |
@@ -97,19 +96,19 @@ Modules are **100% harness-agnostic**. Each harness adapter translates the canon
 | `skills/<id>/` | `.opencode/skills/<id>/` | `.agents/skills/<id>/` | `.claude/skills/<id>/` | `.agents/skills/<id>/` | `.bob/skills/<id>/` |
 | `agents/<id>/` | `.opencode/agents/<id>.md` | `.agents/agents/<id>.md` | `.claude/agents/<id>.md` | `.codex/agents/<id>.md` | `.bob/custom_modes.yaml` |
 
-## 4. Inheritance & Composition Rules
+## 4. Composition Rules
 
-### Dependency Resolution (`extends`)
+### Module Selection
 
-1. Starting from the selected module(s), `agkit` resolves all transitive `extends` dependencies into a topological order from ancestors to most specific modules.
-2. Diamond dependencies are included once at their earliest topological position.
-3. Any cycle or unknown module ID is a hard validation error.
+1. Users explicitly select one or more modules (e.g. `agkit init -m base java-base flink`).
+2. Selected modules are applied in selection order, with duplicate module IDs deduplicated at their first occurrence.
+3. Any unknown module ID is a hard validation error.
 
-### File Merging & Overrides
+### File Merging & Collisions
 
-- **`ROOT.md` (concatenation)**: Trimmed non-empty `ROOT.md` files are concatenated in layer order separated by `\n\n`, with a single trailing `\n`.
-- **`skills/<skill-id>/` (whole-directory override)**: A more specific layer replaces the entire skill definition and companion files from parent layers.
-- **`agents/<agent-id>/` (whole-agent override)**: A more specific layer replaces the entire agent definition from parent layers.
+- **`ROOT.md` (concatenation)**: Trimmed non-empty `ROOT.md` files are concatenated in selection order separated by `\n\n`, with a single trailing `\n`.
+- **`skills/<skill-id>/` (fail-fast on collision)**: Skill IDs must be unique across all selected modules. Selecting multiple modules that define the same skill ID is a hard validation error.
+- **`agents/<agent-id>/` (fail-fast on collision)**: Agent IDs must be unique across all selected modules. Selecting multiple modules that define the same agent ID is a hard validation error.
 
 ## 5. Validation Invariants
 
@@ -120,4 +119,4 @@ Modules are **100% harness-agnostic**. Each harness adapter translates the canon
 - Every module must contain a valid `module.json`.
 - Every skill directory must contain a valid `skill.json` and `SKILL.md`.
 - Every agent directory must contain a valid `agent.json` and `PROMPT.md`.
-- Every `extends` reference must point to an existing module, and the dependency graph must be acyclic.
+- Selected modules must not define colliding skill IDs or agent IDs.

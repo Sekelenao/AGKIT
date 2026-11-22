@@ -66,7 +66,6 @@ async function createTemplateRemoteRepo(baseDir: string): Promise<string> {
     JSON.stringify({
       display_name: 'Apache Flink',
       description: 'Flink conventions',
-      extends: ['base'],
     }),
     'utf8',
   );
@@ -138,7 +137,7 @@ describe('InitCommand', () => {
     const result = await command.execute({
       targetDir: projectDir,
       harnessName: 'opencode',
-      moduleIds: ['flink'],
+      moduleIds: ['base', 'flink'],
     });
 
     const expectedGitSkill =
@@ -161,7 +160,7 @@ describe('InitCommand', () => {
     const manifest = await manifestStore.load(projectDir);
     expect(manifest).toEqual({
       harness: 'opencode',
-      modules: ['flink'],
+      modules: ['base', 'flink'],
       git_repository_url: remoteRepoUrl,
       managed_files: {
         '.opencode/agents/reviewer.md': contentHasher.hash(expectedReviewerAgent),

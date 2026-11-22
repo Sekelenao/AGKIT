@@ -69,7 +69,6 @@ describe('TemplateRepositoryLoader', () => {
       JSON.stringify({
         display_name: 'Apache Flink',
         description: 'Flink streaming conventions',
-        extends: ['base'],
       }),
     );
 
@@ -80,7 +79,6 @@ describe('TemplateRepositoryLoader', () => {
         id: 'base',
         displayName: 'Base',
         description: 'Company baseline',
-        extends: [],
         rootInstructions: '# Base Guide\n',
         skills: [
           {
@@ -106,7 +104,6 @@ describe('TemplateRepositoryLoader', () => {
         id: 'flink',
         displayName: 'Apache Flink',
         description: 'Flink streaming conventions',
-        extends: ['base'],
         rootInstructions: undefined,
         skills: [],
         agents: [],
@@ -202,35 +199,6 @@ describe('TemplateRepositoryLoader', () => {
       }),
     );
     await rm(join(repoDir, 'modules', 'base', 'agents', 'reviewer', 'PROMPT.md'));
-    await expect(loader.loadAll(repoDir)).rejects.toThrow(TemplateRepositoryError);
-  });
-
-  it('throws TemplateRepositoryError when extends references an unknown module', async () => {
-    await writeRepoFile(
-      repoDir,
-      join('modules', 'flink', 'module.json'),
-      JSON.stringify({
-        display_name: 'Flink',
-        description: 'Flink',
-        extends: ['missing-parent'],
-      }),
-    );
-
-    await expect(loader.loadAll(repoDir)).rejects.toThrow(TemplateRepositoryError);
-  });
-
-  it('throws TemplateRepositoryError when a dependency cycle exists', async () => {
-    await writeRepoFile(
-      repoDir,
-      join('modules', 'a', 'module.json'),
-      JSON.stringify({ display_name: 'A', description: 'A', extends: ['b'] }),
-    );
-    await writeRepoFile(
-      repoDir,
-      join('modules', 'b', 'module.json'),
-      JSON.stringify({ display_name: 'B', description: 'B', extends: ['a'] }),
-    );
-
     await expect(loader.loadAll(repoDir)).rejects.toThrow(TemplateRepositoryError);
   });
 });

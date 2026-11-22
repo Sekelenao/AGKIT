@@ -130,12 +130,8 @@ export class OutputFormatter {
     for (const mod of modules) {
       const paddedId = mod.id.padEnd(maxIdWidth);
       const paddedName = mod.displayName.padEnd(maxNameWidth);
-      const extendsSuffix =
-        mod.extends.length > 0
-          ? ` ${this.theme.dim(`[extends: ${mod.extends.join(', ')}]`)}`
-          : '';
       lines.push(
-        `  ${this.theme.accent(paddedId)}  ${this.theme.bright(paddedName)}  ${this.theme.muted(mod.description)}${extendsSuffix}`,
+        `  ${this.theme.accent(paddedId)}  ${this.theme.bright(paddedName)}  ${this.theme.muted(mod.description)}`,
       );
     }
 

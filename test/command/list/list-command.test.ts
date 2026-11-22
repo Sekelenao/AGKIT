@@ -29,7 +29,6 @@ async function createTemplateRemoteRepo(baseDir: string): Promise<string> {
     JSON.stringify({
       display_name: 'Apache Flink',
       description: 'Flink streaming jobs',
-      extends: ['base'],
     }),
     'utf8',
   );
@@ -76,9 +75,11 @@ describe('ListCommand', () => {
 
     const result = await listCommand.execute();
 
-    expect(result.modules.map((mod) => ({ id: mod.id, extends: mod.extends }))).toEqual([
-      { id: 'base', extends: [] },
-      { id: 'flink', extends: ['base'] },
+    expect(
+      result.modules.map((mod) => ({ id: mod.id, displayName: mod.displayName })),
+    ).toEqual([
+      { id: 'base', displayName: 'Base' },
+      { id: 'flink', displayName: 'Apache Flink' },
     ]);
   });
 });

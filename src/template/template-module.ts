@@ -26,7 +26,6 @@ export interface TemplateModule {
   readonly id: string;
   readonly displayName: string;
   readonly description: string;
-  readonly extends: readonly string[];
   readonly rootInstructions: string | undefined;
   readonly skills: readonly TemplateSkill[];
   readonly agents: readonly TemplateAgent[];

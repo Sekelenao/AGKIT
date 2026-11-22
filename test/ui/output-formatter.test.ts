@@ -48,14 +48,14 @@ describe('OutputFormatter', () => {
     expect(lines.join('\n')).toContain('!  AGENTS.md');
   });
 
-  it('formats module lists with aligned columns and extends metadata', () => {
+  it('formats module lists with aligned columns', () => {
     const formatter = new OutputFormatter(false);
     const lines = formatter.formatModuleList([
       {
         id: 'base',
         displayName: 'Base',
         description: 'Core rules',
-        extends: [],
+        rootInstructions: undefined,
         skills: [],
         agents: [],
       },
@@ -63,7 +63,7 @@ describe('OutputFormatter', () => {
         id: 'typescript',
         displayName: 'TypeScript',
         description: 'Strict TS standards',
-        extends: ['base'],
+        rootInstructions: undefined,
         skills: [],
         agents: [],
       },
@@ -71,7 +71,7 @@ describe('OutputFormatter', () => {
 
     expect(lines[0]).toBe('◆ Available Template Modules  (2)');
     expect(lines[2]).toContain('base        Base        Core rules');
-    expect(lines[3]).toContain('typescript  TypeScript  Strict TS standards [extends: base]');
+    expect(lines[3]).toContain('typescript  TypeScript  Strict TS standards');
   });
 
   it('formats errors with the Noir & Emerald error marker when color is enabled', () => {
@@ -89,7 +89,7 @@ describe('OutputFormatter', () => {
       '| Field | Type | Required |',
       '| --- | --- | --- |',
       '| `display_name` | `string` | Yes |',
-      '| `extends` | `string[]` | No |',
+      '| `file_regex` | `string` | No |',
     ].join('\n');
 
     const rendered = formatter.formatMarkdownDocument(markdown);
@@ -99,10 +99,10 @@ describe('OutputFormatter', () => {
       .split('\n');
 
     expect(plainLines).toEqual([
-      '  Field        │ Type     │ Required',
-      '  ─────────────┼──────────┼─────────',
-      '  display_name │ string   │ Yes     ',
-      '  extends      │ string[] │ No      ',
+      '  Field        │ Type   │ Required',
+      '  ─────────────┼────────┼─────────',
+      '  display_name │ string │ Yes     ',
+      '  file_regex   │ string │ No      ',
     ]);
   });
 });
