@@ -4,6 +4,7 @@ import type { UserConfigStore } from '../../config/user-config-store.js';
 import type { GitRepositoryCache } from '../../git/git-repository-cache.js';
 import type { TemplateModule } from '../../template/template-module.js';
 import type { TemplateRepositoryLoader } from '../../template/template-repository-loader.js';
+import { OutputFormatter } from '../../ui/output-formatter.js';
 import type { CliCommand } from '../cli-command.js';
 
 export interface ListResult {
@@ -15,15 +16,18 @@ export class ListCommand implements CliCommand {
   private readonly configStore: UserConfigStore;
   private readonly repositoryCache: GitRepositoryCache;
   private readonly templateLoader: TemplateRepositoryLoader;
+  private readonly outputFormatter: OutputFormatter;
 
   constructor(
     configStore: UserConfigStore,
     repositoryCache: GitRepositoryCache,
     templateLoader: TemplateRepositoryLoader,
+    outputFormatter: OutputFormatter = new OutputFormatter(false),
   ) {
     this.configStore = configStore;
     this.repositoryCache = repositoryCache;
     this.templateLoader = templateLoader;
+    this.outputFormatter = outputFormatter;
   }
 
   register(program: Command): void {
@@ -33,15 +37,8 @@ export class ListCommand implements CliCommand {
       .action(async (): Promise<void> => {
         const result = await this.execute();
 
-        if (result.modules.length === 0) {
-          console.log('No template modules found.');
-          return;
-        }
-
-        for (const mod of result.modules) {
-          const extendsSuffix =
-            mod.extends.length > 0 ? ` [extends: ${mod.extends.join(', ')}]` : '';
-          console.log(`${mod.id} (${mod.displayName}) - ${mod.description}${extendsSuffix}`);
+        for (const line of this.outputFormatter.formatModuleList(result.modules)) {
+          console.log(line);
         }
       });
   }

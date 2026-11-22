@@ -7,6 +7,7 @@ import type { UserConfigStore } from '../config/user-config-store.js';
 import type { HarnessRegistry } from '../harness/harness-registry.js';
 import type { PromptChoice, PromptService } from '../prompt/prompt-service.js';
 import { TemplateRepositoryError } from '../template/template-repository-error.js';
+import { OutputFormatter } from '../ui/output-formatter.js';
 
 const AVAILABLE_ACTIONS: readonly PromptChoice[] = [
   {
@@ -39,6 +40,7 @@ export class InteractiveRunner {
   private readonly promptService: PromptService;
   private readonly initCommand: InitCommand;
   private readonly syncCommand: SyncCommand;
+  private readonly outputFormatter: OutputFormatter;
 
   constructor(
     configStore: UserConfigStore,
@@ -48,6 +50,7 @@ export class InteractiveRunner {
     promptService: PromptService,
     initCommand: InitCommand,
     syncCommand: SyncCommand,
+    outputFormatter: OutputFormatter = new OutputFormatter(false),
   ) {
     this.configStore = configStore;
     this.configCommand = configCommand;
@@ -56,6 +59,7 @@ export class InteractiveRunner {
     this.promptService = promptService;
     this.initCommand = initCommand;
     this.syncCommand = syncCommand;
+    this.outputFormatter = outputFormatter;
   }
 
   async run(targetDir: string): Promise<readonly string[]> {
@@ -96,9 +100,7 @@ export class InteractiveRunner {
         moduleIds,
       });
 
-      for (const file of result.writtenFiles) {
-        summaryLines.push(`Created ${file}`);
-      }
+      summaryLines.push(...this.outputFormatter.formatInitSummary(result));
       return summaryLines;
     }
 
@@ -108,30 +110,7 @@ export class InteractiveRunner {
         resolveConflict: (filePath) => this.promptService.resolveConflict(filePath),
       });
 
-      for (const file of result.createdFiles) {
-        summaryLines.push(`Created ${file}`);
-      }
-      for (const file of result.backedUpFiles) {
-        summaryLines.push(`Backed up ${file}`);
-      }
-      for (const file of result.updatedFiles) {
-        summaryLines.push(`Updated ${file}`);
-      }
-      for (const file of result.deletedFiles) {
-        summaryLines.push(`Deleted ${file}`);
-      }
-      for (const file of result.keptConflictFiles) {
-        summaryLines.push(`Conflict (kept local) ${file}`);
-      }
-
-      const totalChanges =
-        result.createdFiles.length +
-        result.updatedFiles.length +
-        result.deletedFiles.length +
-        result.keptConflictFiles.length;
-      if (totalChanges === 0) {
-        summaryLines.push('Already up to date.');
-      }
+      summaryLines.push(...this.outputFormatter.formatSyncSummary(result));
       return summaryLines;
     }
 
@@ -163,7 +142,7 @@ export class InteractiveRunner {
       default_ref: defaultRef,
     });
 
-    summaryLines.push(`Configured repository: ${result.config.git_repository_url}`);
+    summaryLines.push(...this.outputFormatter.formatConfigSummary(result));
     return result.config;
   }
 }

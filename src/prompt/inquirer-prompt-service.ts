@@ -1,99 +1,74 @@
 import { ExitPromptError } from '@inquirer/core';
-import { checkbox, input, select } from '@inquirer/prompts';
-import chalk from 'chalk';
+import { input } from '@inquirer/prompts';
 import type { ConflictResolution } from '../command/sync/sync-command.js';
+import { THEME_SYMBOLS, UiTheme } from '../ui/ui-theme.js';
 import { PromptCancelledError } from './prompt-cancelled-error.js';
 import type { PromptChoice, PromptService } from './prompt-service.js';
+import { railCheckbox } from './rail-checkbox.js';
+import { railSelect } from './rail-select.js';
 
-const CURSOR_SYMBOL = '❯';
-const unselectedGray = chalk.hex('#808080');
-const descriptionGray = chalk.hex('#808080');
-const [GRAY_OPEN = '', GRAY_CLOSE = ''] = unselectedGray('\0').split('\0');
+const theme = new UiTheme(true);
 
-function stripUnselectedGray(text: string): string {
-  if (GRAY_OPEN.length === 0) {
-    return text;
-  }
-  return text.split(GRAY_OPEN).join('').split(GRAY_CLOSE).join('');
-}
-
-const BASE_PROMPT_THEME = {
+const RAIL_INPUT_THEME = {
   prefix: {
-    idle: chalk.yellow('?'),
-    done: chalk.green('✔'),
+    idle: `${theme.accent(THEME_SYMBOLS.active)} `,
+    done: `${theme.success(THEME_SYMBOLS.done)} `,
   },
   style: {
-    highlight: (text: string): string => {
-      const cleaned = stripUnselectedGray(text);
-      if (cleaned.startsWith(CURSOR_SYMBOL)) {
-        return `${chalk.yellow(CURSOR_SYMBOL)}${chalk.whiteBright(cleaned.slice(CURSOR_SYMBOL.length))}`;
-      }
-      return chalk.whiteBright(cleaned);
-    },
-    answer: (text: string): string => chalk.yellow(text),
-    key: (text: string): string => chalk.yellow.bold(`<${text}>`),
-  },
-};
-
-const LIST_PROMPT_THEME = {
-  ...BASE_PROMPT_THEME,
-  icon: {
-    cursor: CURSOR_SYMBOL,
-  },
-  style: {
-    ...BASE_PROMPT_THEME.style,
-    description: (text: string): string => descriptionGray(text),
+    message: (text: string): string => theme.brightBold(text),
+    answer: (text: string): string => theme.accent(text),
+    error: (text: string): string => `${theme.errorBold(THEME_SYMBOLS.error)} ${theme.error(text)}`,
+    defaultAnswer: (text: string): string => theme.dim(`(${text})`),
   },
 };
 
 export class InquirerPromptService implements PromptService {
   async selectAction(choices: readonly PromptChoice[]): Promise<string> {
-    return this.runSelect('', choices, { ...LIST_PROMPT_THEME, prefix: '' });
+    return this.wrapCancel(() =>
+      railSelect<string>({
+        message: 'What would you like to do?',
+        choices,
+      }),
+    );
   }
 
   async selectHarness(choices: readonly PromptChoice[]): Promise<string> {
-    return this.runSelect('Select target AI harness', choices);
+    return this.wrapCancel(() =>
+      railSelect<string>({
+        message: 'Select target AI harness',
+        choices,
+      }),
+    );
   }
 
   async selectModules(choices: readonly PromptChoice[]): Promise<readonly string[]> {
     return this.wrapCancel(() =>
-      checkbox({
+      railCheckbox<string>({
         message: 'Select template module(s)',
         required: true,
-        theme: LIST_PROMPT_THEME,
-        choices: choices.map((choice) => ({
-          name: unselectedGray(choice.label),
-          short: choice.label,
-          value: choice.value,
-          ...(choice.description === undefined
-            ? {}
-            : { description: choice.description }),
-        })),
+        choices,
       }),
     );
   }
 
   async resolveConflict(filePath: string): Promise<ConflictResolution> {
     return this.wrapCancel(() =>
-      select<ConflictResolution>({
+      railSelect<ConflictResolution>({
         message: `Conflict detected on "${filePath}". How should it be resolved?`,
-        theme: LIST_PROMPT_THEME,
+        tone: 'warning',
         choices: [
           {
-            name: unselectedGray('Keep local version'),
-            short: 'Keep local version',
+            label: 'Keep local version',
             value: 'keep',
             description: 'Leave your local file untouched',
           },
           {
-            name: unselectedGray('Overwrite with upstream'),
-            short: 'Overwrite with upstream',
+            label: 'Overwrite with upstream',
             value: 'overwrite',
             description: 'Replace local file with upstream version',
           },
           {
-            name: unselectedGray('Backup local (.bak) and apply upstream'),
-            short: 'Backup local (.bak) and apply upstream',
+            label: 'Backup local (.bak) and apply upstream',
             value: 'backup',
             description: 'Save local file as .bak before applying upstream',
           },
@@ -107,7 +82,7 @@ export class InquirerPromptService implements PromptService {
       input({
         message: 'Template Git repository URL',
         default: currentUrl,
-        theme: BASE_PROMPT_THEME,
+        theme: RAIL_INPUT_THEME,
         validate: (value) =>
           value.trim().length > 0 || 'Repository URL cannot be empty.',
       }),
@@ -119,36 +94,11 @@ export class InquirerPromptService implements PromptService {
       input({
         message: 'Default branch or tag (leave empty for repository default)',
         default: currentRef,
-        theme: BASE_PROMPT_THEME,
+        theme: RAIL_INPUT_THEME,
       }),
     );
     const trimmed = value.trim();
     return trimmed.length > 0 ? trimmed : undefined;
-  }
-
-  private async runSelect(
-    message: string,
-    choices: readonly PromptChoice[],
-    theme: {
-      readonly prefix: string | { readonly idle: string; readonly done: string };
-      readonly icon: typeof LIST_PROMPT_THEME.icon;
-      readonly style: typeof LIST_PROMPT_THEME.style;
-    } = LIST_PROMPT_THEME,
-  ): Promise<string> {
-    return this.wrapCancel(() =>
-      select({
-        message,
-        theme,
-        choices: choices.map((choice) => ({
-          name: unselectedGray(choice.label),
-          short: choice.label,
-          value: choice.value,
-          ...(choice.description === undefined
-            ? {}
-            : { description: choice.description }),
-        })),
-      }),
-    );
   }
 
   private async wrapCancel<T>(prompt: () => Promise<T>): Promise<T> {

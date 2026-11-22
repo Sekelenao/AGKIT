@@ -1,13 +1,14 @@
-import { Chalk } from 'chalk';
+import { homedir } from 'node:os';
 import type { TerminalOutputStream } from './terminal-spinner.js';
+import { THEME_SYMBOLS, UiTheme } from './ui-theme.js';
 
-const LOGO_LINES: readonly string[] = [
-  '    _    ____ _  _____ _____',
-  '   / \\  / ___| |/ /_ _|_   _|',
-  "  / _ \\| |  _| ' / | |  | |",
-  ' / ___ \\ |_| | . \\ | |  | |',
-  '/_/   \\_\\____|_|\\_\\___| |_|',
-];
+export interface BannerContext {
+  readonly repoUrl?: string;
+  readonly ref?: string;
+  readonly cwd?: string;
+}
+
+const DEFAULT_RULE_WIDTH = 62;
 
 export class BannerRenderer {
   private readonly version: string;
@@ -18,25 +19,48 @@ export class BannerRenderer {
     this.stream = stream;
   }
 
-  format(useColor = false): string {
-    const palette = new Chalk({ level: useColor ? 3 : 0 });
-    const subtitle = `v${this.version} · AI Harness Templates`;
-    const horizontalPadding = 2;
-    const innerWidth = subtitle.length + horizontalPadding * 2;
-    const border = '─'.repeat(innerWidth);
-    const pad = ' '.repeat(horizontalPadding);
+  format(useColor = false, context?: BannerContext): string {
+    const theme = new UiTheme(useColor);
+    const title = theme.accentBold(`${THEME_SYMBOLS.brand} AGKIT`);
+    const version = theme.accent(`v${this.version}`);
+    const subtitle = theme.muted('AI Harness Templates');
+    const headerRow = `${title}  ${version}  ${subtitle}`;
+    const ruleRow = theme.rule(DEFAULT_RULE_WIDTH);
 
-    const logoRows = LOGO_LINES.map((line) => palette.whiteBright(line));
-    const topBorder = palette.dim(`╭${border}╮`);
-    const bottomBorder = palette.dim(`╰${border}╯`);
-    const leftEdge = palette.dim('│');
-    const rightEdge = palette.dim('│');
-    const subtitleRow = `${leftEdge}${palette.dim(`${pad}${subtitle}${pad}`)}${rightEdge}`;
+    const contextSegments: string[] = [];
+    if (context?.repoUrl !== undefined) {
+      const refSuffix =
+        context.ref === undefined ? '' : ` ${theme.dim(`(${context.ref})`)}`;
+      contextSegments.push(
+        `${theme.dim('repo')} ${theme.secondary(context.repoUrl)}${refSuffix}`,
+      );
+    }
+    if (context?.cwd !== undefined) {
+      contextSegments.push(
+        `${theme.dim('dir')} ${theme.secondary(this.shortenHome(context.cwd))}`,
+      );
+    }
 
-    return [...logoRows, '', topBorder, subtitleRow, bottomBorder].join('\n');
+    if (contextSegments.length === 0) {
+      return [headerRow, ruleRow].join('\n');
+    }
+
+    const contextRow = contextSegments.join(`  ${theme.dim('·')}  `);
+    return [headerRow, ruleRow, contextRow].join('\n');
   }
 
-  render(): void {
-    this.stream.write(`${this.format(this.stream.isTTY === true)}\n\n`);
+  render(context?: BannerContext): void {
+    this.stream.write(`${this.format(this.stream.isTTY === true, context)}\n\n`);
+  }
+
+  private shortenHome(pathValue: string): string {
+    const home = homedir();
+    if (pathValue === home) {
+      return '~';
+    }
+    if (pathValue.startsWith(`${home}/`)) {
+      return `~${pathValue.slice(home.length)}`;
+    }
+    return pathValue;
   }
 }

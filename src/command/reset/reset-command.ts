@@ -1,6 +1,7 @@
 import { access, rm } from 'node:fs/promises';
 import type { Command } from 'commander';
 import type { AgkitPaths } from '../../config/agkit-paths.js';
+import { OutputFormatter } from '../../ui/output-formatter.js';
 import type { CliCommand } from '../cli-command.js';
 
 export interface ResetOptions {
@@ -14,9 +15,14 @@ export interface ResetResult {
 
 export class ResetCommand implements CliCommand {
   private readonly paths: AgkitPaths;
+  private readonly outputFormatter: OutputFormatter;
 
-  constructor(paths: AgkitPaths) {
+  constructor(
+    paths: AgkitPaths,
+    outputFormatter: OutputFormatter = new OutputFormatter(false),
+  ) {
     this.paths = paths;
+    this.outputFormatter = outputFormatter;
   }
 
   register(program: Command): void {
@@ -28,13 +34,8 @@ export class ResetCommand implements CliCommand {
       .action(async (options: ResetOptions): Promise<void> => {
         const result = await this.execute(options);
 
-        if (result.removedPaths.length === 0) {
-          console.log('Nothing to reset.');
-          return;
-        }
-
-        for (const removedPath of result.removedPaths) {
-          console.log(`Removed ${removedPath}`);
+        for (const line of this.outputFormatter.formatResetSummary(result)) {
+          console.log(line);
         }
       });
   }

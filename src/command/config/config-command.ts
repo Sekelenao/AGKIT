@@ -2,6 +2,7 @@ import type { Command } from 'commander';
 import type { UserConfig } from '../../config/user-config.js';
 import type { UserConfigStore } from '../../config/user-config-store.js';
 import type { GitRepositoryCache } from '../../git/git-repository-cache.js';
+import { OutputFormatter } from '../../ui/output-formatter.js';
 import type { CliCommand } from '../cli-command.js';
 
 export interface ConfigResult {
@@ -17,13 +18,16 @@ interface ConfigCliOptions {
 export class ConfigCommand implements CliCommand {
   private readonly configStore: UserConfigStore;
   private readonly repositoryCache: GitRepositoryCache;
+  private readonly outputFormatter: OutputFormatter;
 
   constructor(
     configStore: UserConfigStore,
     repositoryCache: GitRepositoryCache,
+    outputFormatter: OutputFormatter = new OutputFormatter(false),
   ) {
     this.configStore = configStore;
     this.repositoryCache = repositoryCache;
+    this.outputFormatter = outputFormatter;
   }
 
   register(program: Command): void {
@@ -38,8 +42,9 @@ export class ConfigCommand implements CliCommand {
           default_ref: options.ref,
         });
 
-        console.log(`Configured repository: ${result.config.git_repository_url}`);
-        console.log(`Synced local cache: ${result.cacheDir}`);
+        for (const line of this.outputFormatter.formatConfigSummary(result)) {
+          console.log(line);
+        }
       });
   }
 

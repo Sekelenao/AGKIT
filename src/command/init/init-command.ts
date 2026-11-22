@@ -9,6 +9,7 @@ import type { ProjectManifestStore } from '../../manifest/project-manifest-store
 import type { ModuleComposer } from '../../template/module-composer.js';
 import { TemplateRepositoryError } from '../../template/template-repository-error.js';
 import type { TemplateRepositoryLoader } from '../../template/template-repository-loader.js';
+import { OutputFormatter } from '../../ui/output-formatter.js';
 import type { CliCommand } from '../cli-command.js';
 
 export interface InitOptions {
@@ -35,6 +36,7 @@ export class InitCommand implements CliCommand {
   private readonly moduleComposer: ModuleComposer;
   private readonly manifestStore: ProjectManifestStore;
   private readonly contentHasher: ContentHasher;
+  private readonly outputFormatter: OutputFormatter;
 
   constructor(
     harnessRegistry: HarnessRegistry,
@@ -44,6 +46,7 @@ export class InitCommand implements CliCommand {
     moduleComposer: ModuleComposer,
     manifestStore: ProjectManifestStore,
     contentHasher: ContentHasher,
+    outputFormatter: OutputFormatter = new OutputFormatter(false),
   ) {
     this.harnessRegistry = harnessRegistry;
     this.configStore = configStore;
@@ -52,6 +55,7 @@ export class InitCommand implements CliCommand {
     this.moduleComposer = moduleComposer;
     this.manifestStore = manifestStore;
     this.contentHasher = contentHasher;
+    this.outputFormatter = outputFormatter;
   }
 
   register(program: Command): void {
@@ -71,8 +75,8 @@ export class InitCommand implements CliCommand {
           moduleIds: options.module,
         });
 
-        for (const file of result.writtenFiles) {
-          console.log(`Created ${file}`);
+        for (const line of this.outputFormatter.formatInitSummary(result)) {
+          console.log(line);
         }
       });
   }

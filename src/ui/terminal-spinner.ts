@@ -1,5 +1,5 @@
-import { Chalk } from 'chalk';
 import type { ProgressReporter } from './progress-reporter.js';
+import { UiTheme } from './ui-theme.js';
 
 export interface TerminalOutputStream {
   readonly isTTY?: boolean;
@@ -8,7 +8,7 @@ export interface TerminalOutputStream {
 
 const SPINNER_FRAMES: readonly string[] = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 const CLEAR_LINE_SEQUENCE = '\r\x1b[2K';
-const ttyPalette = new Chalk({ level: 3 });
+const ttyTheme = new UiTheme(true);
 
 export class TerminalSpinner implements ProgressReporter {
   private readonly stream: TerminalOutputStream;
@@ -28,7 +28,7 @@ export class TerminalSpinner implements ProgressReporter {
     const render = (): void => {
       const frame = SPINNER_FRAMES[frameIndex % SPINNER_FRAMES.length] ?? SPINNER_FRAMES[0] ?? '⠋';
       frameIndex += 1;
-      this.stream.write(`\r${ttyPalette.yellow(frame)} ${message}`);
+      this.stream.write(`\r${ttyTheme.accent(frame)}  ${ttyTheme.bright(message)}`);
     };
 
     render();

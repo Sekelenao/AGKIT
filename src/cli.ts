@@ -22,9 +22,12 @@ import { ModuleComposer } from './template/module-composer.js';
 import { TemplateRepositoryLoader } from './template/template-repository-loader.js';
 import { AlternateScreen } from './ui/alternate-screen.js';
 import { BannerRenderer } from './ui/banner-renderer.js';
+import { OutputFormatter } from './ui/output-formatter.js';
 import { TerminalSpinner } from './ui/terminal-spinner.js';
 
 const cliVersion = await new PackageVersionReader().read();
+const stdoutFormatter = new OutputFormatter(process.stdout.isTTY === true);
+const stderrFormatter = new OutputFormatter(process.stderr.isTTY === true);
 
 const paths = new AgkitPaths();
 const configStore = new UserConfigStore(paths);
@@ -41,7 +44,7 @@ const harnessRegistry = new HarnessRegistry([
   new AntigravityHarness(),
 ]);
 
-const configCommand = new ConfigCommand(configStore, repositoryCache);
+const configCommand = new ConfigCommand(configStore, repositoryCache, stdoutFormatter);
 const initCommand = new InitCommand(
   harnessRegistry,
   configStore,
@@ -50,8 +53,14 @@ const initCommand = new InitCommand(
   moduleComposer,
   manifestStore,
   contentHasher,
+  stdoutFormatter,
 );
-const listCommand = new ListCommand(configStore, repositoryCache, templateLoader);
+const listCommand = new ListCommand(
+  configStore,
+  repositoryCache,
+  templateLoader,
+  stdoutFormatter,
+);
 const syncCommand = new SyncCommand(
   harnessRegistry,
   repositoryCache,
@@ -59,8 +68,9 @@ const syncCommand = new SyncCommand(
   moduleComposer,
   manifestStore,
   contentHasher,
+  stdoutFormatter,
 );
-const resetCommand = new ResetCommand(paths);
+const resetCommand = new ResetCommand(paths, stdoutFormatter);
 const interactiveRunner = new InteractiveRunner(
   configStore,
   configCommand,
@@ -69,6 +79,7 @@ const interactiveRunner = new InteractiveRunner(
   new InquirerPromptService(),
   initCommand,
   syncCommand,
+  stdoutFormatter,
 );
 
 const commands: readonly CliCommand[] = [
@@ -86,9 +97,15 @@ program
   .description('CLI for managing enterprise AI harness templates')
   .version(cliVersion)
   .action(async (): Promise<void> => {
+    const existingConfig = await configStore.load();
+    const cwd = process.cwd();
     const summaryLines = await alternateScreen.run(async () => {
-      bannerRenderer.render();
-      return interactiveRunner.run(process.cwd());
+      bannerRenderer.render({
+        repoUrl: existingConfig?.git_repository_url,
+        ref: existingConfig?.default_ref,
+        cwd,
+      });
+      return interactiveRunner.run(cwd);
     });
     for (const line of summaryLines) {
       console.log(line);
@@ -103,7 +120,7 @@ try {
   await program.parseAsync(process.argv);
 } catch (error: unknown) {
   if (error instanceof CliError) {
-    console.error(error.message);
+    console.error(stderrFormatter.formatError(error.message));
     process.exitCode = error.exitCode;
   } else {
     throw error;

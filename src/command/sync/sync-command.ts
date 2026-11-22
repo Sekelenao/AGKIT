@@ -10,6 +10,7 @@ import type { ProjectManifestStore } from '../../manifest/project-manifest-store
 import type { ModuleComposer } from '../../template/module-composer.js';
 import type { ComposedTemplates } from '../../template/template-module.js';
 import type { TemplateRepositoryLoader } from '../../template/template-repository-loader.js';
+import { OutputFormatter } from '../../ui/output-formatter.js';
 import type { CliCommand } from '../cli-command.js';
 import { SyncConflictError } from './sync-conflict-error.js';
 
@@ -46,6 +47,7 @@ export class SyncCommand implements CliCommand {
   private readonly moduleComposer: ModuleComposer;
   private readonly manifestStore: ProjectManifestStore;
   private readonly contentHasher: ContentHasher;
+  private readonly outputFormatter: OutputFormatter;
 
   constructor(
     harnessRegistry: HarnessRegistry,
@@ -54,6 +56,7 @@ export class SyncCommand implements CliCommand {
     moduleComposer: ModuleComposer,
     manifestStore: ProjectManifestStore,
     contentHasher: ContentHasher,
+    outputFormatter: OutputFormatter = new OutputFormatter(false),
   ) {
     this.harnessRegistry = harnessRegistry;
     this.repositoryCache = repositoryCache;
@@ -61,6 +64,7 @@ export class SyncCommand implements CliCommand {
     this.moduleComposer = moduleComposer;
     this.manifestStore = manifestStore;
     this.contentHasher = contentHasher;
+    this.outputFormatter = outputFormatter;
   }
 
   register(program: Command): void {
@@ -199,29 +203,8 @@ export class SyncCommand implements CliCommand {
   }
 
   private printSummary(result: SyncResult): void {
-    for (const file of result.createdFiles) {
-      console.log(`Created ${file}`);
-    }
-    for (const file of result.backedUpFiles) {
-      console.log(`Backed up ${file}`);
-    }
-    for (const file of result.updatedFiles) {
-      console.log(`Updated ${file}`);
-    }
-    for (const file of result.deletedFiles) {
-      console.log(`Deleted ${file}`);
-    }
-    for (const file of result.keptConflictFiles) {
-      console.log(`Conflict (kept local) ${file}`);
-    }
-
-    const totalChanges =
-      result.createdFiles.length +
-      result.updatedFiles.length +
-      result.deletedFiles.length +
-      result.keptConflictFiles.length;
-    if (totalChanges === 0) {
-      console.log('Already up to date.');
+    for (const line of this.outputFormatter.formatSyncSummary(result)) {
+      console.log(line);
     }
   }
 
