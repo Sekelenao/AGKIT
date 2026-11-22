@@ -6,7 +6,6 @@ Before performing any task, agents must consult and apply the relevant skills in
 
 ## References
 
-- Project specification: `opencode-templates-cli-spec.md`
 - Template repository specification: `docs/template-repository.md`
 - Skills directory: `.agents/skills/`
 - Specialized subagents directory: `.agents/agents/`
