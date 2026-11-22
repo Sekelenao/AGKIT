@@ -93,7 +93,11 @@ export class InteractiveRunner {
     while (config === undefined) {
       this.renderFrame(undefined, targetDir, noticeLines);
       try {
-        const configOutcome = await this.runConfiguration(undefined, summaryLines);
+        const configOutcome = await this.runConfiguration(
+          undefined,
+          targetDir,
+          summaryLines,
+        );
         config = configOutcome.config;
         noticeLines = configOutcome.lines;
       } catch (error: unknown) {
@@ -129,7 +133,7 @@ export class InteractiveRunner {
 
       try {
         if (action === 'init') {
-          noticeLines = await this.runInit(targetDir, summaryLines);
+          noticeLines = await this.runInit(config, targetDir, summaryLines);
           continue;
         }
 
@@ -139,7 +143,11 @@ export class InteractiveRunner {
         }
 
         if (action === 'config') {
-          const configOutcome = await this.runConfiguration(config, summaryLines);
+          const configOutcome = await this.runConfiguration(
+            config,
+            targetDir,
+            summaryLines,
+          );
           config = configOutcome.config;
           noticeLines = configOutcome.lines;
           continue;
@@ -188,6 +196,7 @@ export class InteractiveRunner {
   }
 
   private async runInit(
+    config: UserConfig,
     targetDir: string,
     summaryLines: string[],
   ): Promise<readonly string[]> {
@@ -203,24 +212,37 @@ export class InteractiveRunner {
       label: `${mod.displayName} (${mod.id})`,
       description: mod.description,
     }));
-    const moduleIds = await this.promptService.selectModules(moduleChoices);
-
     const harnessChoices: readonly PromptChoice[] = this.harnessRegistry
       .listAll()
       .map((harness) => ({
         value: harness.name,
         label: harness.displayName,
       }));
-    const harnessName = await this.promptService.selectHarness(harnessChoices);
-    const result = await this.initCommand.execute({
-      targetDir,
-      harnessName,
-      moduleIds,
-    });
 
-    const formatted = this.outputFormatter.formatInitSummary(result);
-    summaryLines.push(...formatted);
-    return formatted;
+    while (true) {
+      const moduleIds = await this.promptService.selectModules(moduleChoices);
+
+      let harnessName: string;
+      try {
+        harnessName = await this.promptService.selectHarness(harnessChoices);
+      } catch (error: unknown) {
+        if (error instanceof PromptCancelledError) {
+          this.renderFrame(config, targetDir, []);
+          continue;
+        }
+        throw error;
+      }
+
+      const result = await this.initCommand.execute({
+        targetDir,
+        harnessName,
+        moduleIds,
+      });
+
+      const formatted = this.outputFormatter.formatInitSummary(result);
+      summaryLines.push(...formatted);
+      return formatted;
+    }
   }
 
   private async runSync(
@@ -239,25 +261,36 @@ export class InteractiveRunner {
 
   private async runConfiguration(
     currentConfig: UserConfig | undefined,
+    targetDir: string,
     summaryLines: string[],
   ): Promise<{ readonly config: UserConfig; readonly lines: readonly string[] }> {
-    const gitRepositoryUrl = await this.promptService.inputRepoUrl(
-      currentConfig?.git_repository_url,
-    );
-    const defaultRef = await this.promptService.inputDefaultRef(
-      currentConfig?.default_ref,
-    );
+    let gitRepositoryUrl = currentConfig?.git_repository_url;
+    let defaultRef = currentConfig?.default_ref;
 
-    const result = await this.configCommand.execute({
-      git_repository_url: gitRepositoryUrl,
-      default_ref: defaultRef,
-    });
+    while (true) {
+      gitRepositoryUrl = await this.promptService.inputRepoUrl(gitRepositoryUrl);
 
-    const formatted = this.outputFormatter.formatConfigSummary(result);
-    summaryLines.push(...formatted);
-    return {
-      config: result.config,
-      lines: formatted,
-    };
+      try {
+        defaultRef = await this.promptService.inputDefaultRef(defaultRef);
+      } catch (error: unknown) {
+        if (error instanceof PromptCancelledError) {
+          this.renderFrame(currentConfig, targetDir, []);
+          continue;
+        }
+        throw error;
+      }
+
+      const result = await this.configCommand.execute({
+        git_repository_url: gitRepositoryUrl,
+        default_ref: defaultRef,
+      });
+
+      const formatted = this.outputFormatter.formatConfigSummary(result);
+      summaryLines.push(...formatted);
+      return {
+        config: result.config,
+        lines: formatted,
+      };
+    }
   }
 }

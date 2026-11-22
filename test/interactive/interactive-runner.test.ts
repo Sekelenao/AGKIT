@@ -411,6 +411,74 @@ describe('InteractiveRunner', () => {
     expect(menuCallCount).toBe(2);
   });
 
+  it('steps back to the previous form field when cancelling step 2 of init or config', async () => {
+    await configStore.save({ git_repository_url: remoteRepoUrl });
+
+    const projectDir = join(tempDir, 'backtrack-project');
+    await mkdir(projectDir, { recursive: true });
+
+    const queuedActions = ['config', 'init', 'exit'];
+    let repoInputCalls = 0;
+    let refInputCalls = 0;
+    const seenRepoDefaults: (string | undefined)[] = [];
+    let moduleSelectCalls = 0;
+    let harnessSelectCalls = 0;
+
+    const stubPrompt: PromptService = {
+      async inputRepoUrl(currentUrl?: string): Promise<string> {
+        repoInputCalls += 1;
+        seenRepoDefaults.push(currentUrl);
+        return remoteRepoUrl;
+      },
+      async inputDefaultRef(): Promise<string | undefined> {
+        refInputCalls += 1;
+        if (refInputCalls === 1) {
+          throw new PromptCancelledError();
+        }
+        return 'main';
+      },
+      async selectAction(): Promise<string> {
+        return queuedActions.shift() ?? 'exit';
+      },
+      async selectModules(): Promise<readonly string[]> {
+        moduleSelectCalls += 1;
+        return ['base'];
+      },
+      async selectHarness(): Promise<string> {
+        harnessSelectCalls += 1;
+        if (harnessSelectCalls === 1) {
+          throw new PromptCancelledError();
+        }
+        return 'antigravity';
+      },
+      async resolveConflict(): Promise<ConflictResolution> {
+        throw new Error('resolveConflict should not be called');
+      },
+      async viewDocument(): Promise<void> {
+        throw new Error('viewDocument should not be called');
+      },
+    };
+
+    const runner = new InteractiveRunner(
+      configStore,
+      configCommand,
+      listCommand,
+      harnessRegistry,
+      stubPrompt,
+      initCommand,
+      syncCommand,
+    );
+
+    await runner.run(projectDir);
+
+    expect(repoInputCalls).toBe(2);
+    expect(refInputCalls).toBe(2);
+    expect(seenRepoDefaults).toEqual([remoteRepoUrl, remoteRepoUrl]);
+    expect(moduleSelectCalls).toBe(2);
+    expect(harnessSelectCalls).toBe(2);
+    expect(await readFile(join(projectDir, 'AGENTS.md'), 'utf8')).toBe('# Base Guide\n');
+  });
+
   it('exits cleanly when Exit is selected from the menu', async () => {
     await configStore.save({ git_repository_url: remoteRepoUrl });
 

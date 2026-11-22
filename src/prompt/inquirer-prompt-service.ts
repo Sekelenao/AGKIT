@@ -1,27 +1,11 @@
 import { ExitPromptError } from '@inquirer/core';
-import { input } from '@inquirer/prompts';
 import type { ConflictResolution } from '../command/sync/sync-command.js';
-import { THEME_SYMBOLS, UiTheme } from '../ui/ui-theme.js';
-import { PromptCancelledError } from './prompt-cancelled-error.js';
+import { PROMPT_CANCELLED, PromptCancelledError } from './prompt-cancelled-error.js';
 import type { DocumentViewOptions, PromptChoice, PromptService } from './prompt-service.js';
 import { railCheckbox } from './rail-checkbox.js';
 import { railDocumentPager } from './rail-document-pager.js';
+import { railInput } from './rail-input.js';
 import { railSelect } from './rail-select.js';
-
-const theme = new UiTheme(true);
-
-const RAIL_INPUT_THEME = {
-  prefix: {
-    idle: `${theme.accent(THEME_SYMBOLS.active)} `,
-    done: `${theme.success(THEME_SYMBOLS.done)} `,
-  },
-  style: {
-    message: (text: string): string => theme.brightBold(text),
-    answer: (text: string): string => theme.accent(text),
-    error: (text: string): string => `${theme.errorBold(THEME_SYMBOLS.error)} ${theme.error(text)}`,
-    defaultAnswer: (text: string): string => theme.dim(`(${text})`),
-  },
-};
 
 export class InquirerPromptService implements PromptService {
   async selectAction(choices: readonly PromptChoice[]): Promise<string> {
@@ -29,6 +13,7 @@ export class InquirerPromptService implements PromptService {
       railSelect<string>({
         message: 'What would you like to do?',
         choices,
+        cancelLabel: 'quit',
       }),
     );
   }
@@ -38,6 +23,7 @@ export class InquirerPromptService implements PromptService {
       railSelect<string>({
         message: 'Select target AI harness',
         choices,
+        cancelLabel: 'back',
       }),
     );
   }
@@ -48,6 +34,7 @@ export class InquirerPromptService implements PromptService {
         message: 'Select template module(s)',
         required: true,
         choices,
+        cancelLabel: 'back',
       }),
     );
   }
@@ -57,6 +44,7 @@ export class InquirerPromptService implements PromptService {
       railSelect<ConflictResolution>({
         message: `Conflict detected on "${filePath}". How should it be resolved?`,
         tone: 'warning',
+        cancelLabel: 'back',
         choices: [
           {
             label: 'Keep local version',
@@ -80,10 +68,10 @@ export class InquirerPromptService implements PromptService {
 
   async inputRepoUrl(currentUrl?: string): Promise<string> {
     return this.wrapCancel(() =>
-      input({
+      railInput({
         message: 'Template Git repository URL',
         default: currentUrl,
-        theme: RAIL_INPUT_THEME,
+        cancelLabel: 'back',
         validate: (value) =>
           value.trim().length > 0 || 'Repository URL cannot be empty.',
       }),
@@ -92,10 +80,10 @@ export class InquirerPromptService implements PromptService {
 
   async inputDefaultRef(currentRef?: string): Promise<string | undefined> {
     const value = await this.wrapCancel(() =>
-      input({
+      railInput({
         message: 'Default branch or tag (leave empty for repository default)',
         default: currentRef,
-        theme: RAIL_INPUT_THEME,
+        cancelLabel: 'back',
       }),
     );
     const trimmed = value.trim();
@@ -112,9 +100,15 @@ export class InquirerPromptService implements PromptService {
     );
   }
 
-  private async wrapCancel<T>(prompt: () => Promise<T>): Promise<T> {
+  private async wrapCancel<T>(
+    prompt: () => Promise<T | typeof PROMPT_CANCELLED>,
+  ): Promise<T> {
     try {
-      return await prompt();
+      const result = await prompt();
+      if (result === PROMPT_CANCELLED) {
+        throw new PromptCancelledError();
+      }
+      return result;
     } catch (error: unknown) {
       if (error instanceof ExitPromptError) {
         throw new PromptCancelledError({ cause: error });

@@ -8,6 +8,7 @@ import {
   useState,
 } from '@inquirer/core';
 import { THEME_SYMBOLS, UiTheme } from '../ui/ui-theme.js';
+import { PROMPT_CANCELLED } from './prompt-cancelled-error.js';
 
 export interface RailSelectChoice<Value> {
   readonly value: Value;
@@ -20,22 +21,36 @@ export interface RailSelectConfig<Value> {
   readonly choices: readonly RailSelectChoice<Value>[];
   readonly tone?: 'accent' | 'warning';
   readonly pageSize?: number;
+  readonly cancelLabel?: string;
 }
 
 const CURSOR_HIDE = '\x1b[?25l';
 const theme = new UiTheme(true);
 
 export const railSelect = createPrompt(
-  <Value,>(config: RailSelectConfig<Value>, done: (value: Value) => void): string => {
-    const { message, choices, tone = 'accent', pageSize = 7 } = config;
-    const [status, setStatus] = useState<'idle' | 'done'>('idle');
+  <Value,>(
+    config: RailSelectConfig<Value>,
+    done: (value: Value | typeof PROMPT_CANCELLED) => void,
+  ): string => {
+    const { message, choices, tone = 'accent', pageSize = 7, cancelLabel = 'back' } = config;
+    const [status, setStatus] = useState<'idle' | 'done' | 'cancelled'>('idle');
     const [active, setActive] = useState<number>(0);
 
     const rail = theme.dim(THEME_SYMBOLS.rail);
     const activeChoice = choices[active] ?? choices[0];
 
     useKeypress((key) => {
-      if (status !== 'idle' || choices.length === 0) {
+      if (status !== 'idle') {
+        return;
+      }
+
+      if (key.name === 'escape') {
+        setStatus('cancelled');
+        done(PROMPT_CANCELLED);
+        return;
+      }
+
+      if (choices.length === 0) {
         return;
       }
 
@@ -51,6 +66,10 @@ export const railSelect = createPrompt(
         setActive((active + 1) % choices.length);
       }
     });
+
+    if (status === 'cancelled') {
+      return '';
+    }
 
     if (status === 'done') {
       const answer = activeChoice === undefined ? '' : activeChoice.label;
@@ -84,7 +103,7 @@ export const railSelect = createPrompt(
         ? `${theme.dim(THEME_SYMBOLS.end)}  ${theme.muted(activeChoice.description)}`
         : theme.dim(THEME_SYMBOLS.end);
 
-    const helpLine = `   ${theme.dim('↑↓ navigate  ·  enter confirm  ·  ctrl+c quit')}`;
+    const helpLine = `   ${theme.dim(`↑↓ navigate  ·  enter confirm  ·  esc ${cancelLabel}`)}`;
 
     const lines = [
       `${headerIcon}  ${headerTitle}`,

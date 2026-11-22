@@ -9,6 +9,7 @@ import {
   useState,
 } from '@inquirer/core';
 import { THEME_SYMBOLS, UiTheme } from '../ui/ui-theme.js';
+import { PROMPT_CANCELLED } from './prompt-cancelled-error.js';
 
 export interface RailCheckboxChoice<Value> {
   readonly value: Value;
@@ -21,6 +22,7 @@ export interface RailCheckboxConfig<Value> {
   readonly choices: readonly RailCheckboxChoice<Value>[];
   readonly required?: boolean;
   readonly pageSize?: number;
+  readonly cancelLabel?: string;
 }
 
 const CURSOR_HIDE = '\x1b[?25l';
@@ -29,10 +31,10 @@ const theme = new UiTheme(true);
 export const railCheckbox = createPrompt(
   <Value,>(
     config: RailCheckboxConfig<Value>,
-    done: (values: readonly Value[]) => void,
+    done: (values: readonly Value[] | typeof PROMPT_CANCELLED) => void,
   ): string => {
-    const { message, choices, required = false, pageSize = 7 } = config;
-    const [status, setStatus] = useState<'idle' | 'done'>('idle');
+    const { message, choices, required = false, pageSize = 7, cancelLabel = 'back' } = config;
+    const [status, setStatus] = useState<'idle' | 'done' | 'cancelled'>('idle');
     const [active, setActive] = useState<number>(0);
     const [selectedIndices, setSelectedIndices] = useState<readonly number[]>([]);
     const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
@@ -42,7 +44,17 @@ export const railCheckbox = createPrompt(
     const activeChoice = choices[active] ?? choices[0];
 
     useKeypress((key) => {
-      if (status !== 'idle' || choices.length === 0) {
+      if (status !== 'idle') {
+        return;
+      }
+
+      if (key.name === 'escape') {
+        setStatus('cancelled');
+        done(PROMPT_CANCELLED);
+        return;
+      }
+
+      if (choices.length === 0) {
         return;
       }
 
@@ -82,6 +94,10 @@ export const railCheckbox = createPrompt(
       }
     });
 
+    if (status === 'cancelled') {
+      return '';
+    }
+
     if (status === 'done') {
       const pickedLabels = choices
         .filter((_, index) => selectedSet.has(index))
@@ -117,7 +133,7 @@ export const railCheckbox = createPrompt(
           ? `${theme.dim(THEME_SYMBOLS.end)}  ${theme.muted(activeChoice.description)}`
           : theme.dim(THEME_SYMBOLS.end);
 
-    const helpLine = `   ${theme.dim('↑↓ navigate  ·  space select  ·  a all  ·  enter confirm')}`;
+    const helpLine = `   ${theme.dim(`↑↓ navigate  ·  space select  ·  a all  ·  enter confirm  ·  esc ${cancelLabel}`)}`;
 
     const lines = [
       `${theme.accent(THEME_SYMBOLS.active)}  ${theme.brightBold(message)}`,
