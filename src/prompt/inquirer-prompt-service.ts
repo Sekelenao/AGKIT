@@ -1,5 +1,6 @@
 import { ExitPromptError } from '@inquirer/core';
-import type { ConflictResolution } from '../command/sync/sync-command.js';
+import type { ConflictResolution, SyncConflict } from '../command/sync/sync-command.js';
+import { TextDiffFormatter } from '../ui/text-diff-formatter.js';
 import { PROMPT_CANCELLED, PromptCancelledError } from './prompt-cancelled-error.js';
 import type { PromptChoice, PromptService } from './prompt-service.js';
 import { railCheckbox } from './rail-checkbox.js';
@@ -7,6 +8,11 @@ import { railInput } from './rail-input.js';
 import { railSelect } from './rail-select.js';
 
 export class InquirerPromptService implements PromptService {
+  private readonly diffFormatter: TextDiffFormatter;
+
+  constructor(diffFormatter: TextDiffFormatter = new TextDiffFormatter(true)) {
+    this.diffFormatter = diffFormatter;
+  }
   async selectAction(choices: readonly PromptChoice[]): Promise<string> {
     return this.wrapCancel(() =>
       railSelect<string>({
@@ -38,12 +44,18 @@ export class InquirerPromptService implements PromptService {
     );
   }
 
-  async resolveConflict(filePath: string): Promise<ConflictResolution> {
+  async resolveConflict(conflict: SyncConflict): Promise<ConflictResolution> {
+    const previewLines = this.diffFormatter.format(
+      conflict.localContent,
+      conflict.upstreamContent,
+    );
+
     return this.wrapCancel(() =>
       railSelect<ConflictResolution>({
-        message: `Conflict detected on "${filePath}". How should it be resolved?`,
+        message: `Conflict detected on "${conflict.relativePath}". How should it be resolved?`,
         tone: 'warning',
         cancelLabel: 'back',
+        previewLines,
         choices: [
           {
             label: 'Keep local version',

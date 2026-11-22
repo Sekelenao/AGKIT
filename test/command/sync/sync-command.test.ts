@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { simpleGit } from 'simple-git';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { InitCommand } from '../../../src/command/init/init-command.js';
-import { SyncCommand } from '../../../src/command/sync/sync-command.js';
+import { SyncCommand, type SyncConflict } from '../../../src/command/sync/sync-command.js';
 import { AgkitPaths } from '../../../src/config/agkit-paths.js';
 import { UserConfigStore } from '../../../src/config/user-config-store.js';
 import { GitRepositoryCache } from '../../../src/git/git-repository-cache.js';
@@ -227,11 +227,22 @@ describe('SyncCommand', () => {
     await writeFile(join(fixture.workDir, 'modules', 'base', 'ROOT.md'), '# Base v2\n', 'utf8');
     await fixture.commitAndPush('v2');
 
+    const capturedConflicts: SyncConflict[] = [];
     const result = await syncCommand.execute({
       targetDir: projectDir,
-      resolveConflict: async () => 'backup',
+      resolveConflict: async (conflict) => {
+        capturedConflicts.push(conflict);
+        return 'backup';
+      },
     });
 
+    expect(capturedConflicts).toEqual([
+      {
+        relativePath: 'AGENTS.md',
+        localContent: '# Local edits\n',
+        upstreamContent: '# Base v2\n',
+      },
+    ]);
     expect(result.backedUpFiles).toEqual(['AGENTS.md.bak']);
     expect(result.updatedFiles).toEqual(['AGENTS.md']);
     expect(result.keptConflictFiles).toEqual([]);

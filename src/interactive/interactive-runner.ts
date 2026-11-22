@@ -262,7 +262,7 @@ export class InteractiveRunner {
   ): Promise<readonly string[]> {
     const result = await this.syncCommand.execute({
       targetDir,
-      resolveConflict: (filePath) => this.promptService.resolveConflict(filePath),
+      resolveConflict: (conflict) => this.promptService.resolveConflict(conflict),
     });
 
     const formatted = this.outputFormatter.formatSyncSummary(result);

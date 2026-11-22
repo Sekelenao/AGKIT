@@ -22,6 +22,7 @@ export interface RailSelectConfig<Value> {
   readonly tone?: 'accent' | 'warning';
   readonly pageSize?: number;
   readonly cancelLabel?: string;
+  readonly previewLines?: readonly string[];
 }
 
 const CURSOR_HIDE = '\x1b[?25l';
@@ -32,7 +33,14 @@ export const railSelect = createPrompt(
     config: RailSelectConfig<Value>,
     done: (value: Value | typeof PROMPT_CANCELLED) => void,
   ): string => {
-    const { message, choices, tone = 'accent', pageSize = 7, cancelLabel = 'back' } = config;
+    const {
+      message,
+      choices,
+      tone = 'accent',
+      pageSize = 7,
+      cancelLabel = 'back',
+      previewLines = [],
+    } = config;
     const [status, setStatus] = useState<'idle' | 'done' | 'cancelled'>('idle');
     const [active, setActive] = useState<number>(0);
 
@@ -105,9 +113,15 @@ export const railSelect = createPrompt(
 
     const helpLine = `   ${theme.dim(`↑↓ navigate  ·  enter confirm  ·  esc ${cancelLabel}`)}`;
 
+    const previewSection =
+      previewLines.length > 0
+        ? [...previewLines.map((line) => `${rail}  ${line}`), rail]
+        : [];
+
     const lines = [
       `${headerIcon}  ${headerTitle}`,
       rail,
+      ...previewSection,
       page,
       rail,
       footerLine,

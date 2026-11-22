@@ -17,10 +17,16 @@ import { SyncConflictError } from './sync-conflict-error.js';
 
 export type ConflictResolution = 'overwrite' | 'keep' | 'backup';
 
+export interface SyncConflict {
+  readonly relativePath: string;
+  readonly localContent: string;
+  readonly upstreamContent: string | undefined;
+}
+
 export interface SyncOptions {
   readonly targetDir: string;
   readonly force?: boolean;
-  readonly resolveConflict?: (relativePath: string) => Promise<ConflictResolution>;
+  readonly resolveConflict?: (conflict: SyncConflict) => Promise<ConflictResolution>;
 }
 
 export interface SyncResult {
@@ -135,7 +141,11 @@ export class SyncCommand implements CliCommand {
         continue;
       }
 
-      const resolution = await this.determineConflictResolution(options, posixPath);
+      const resolution = await this.determineConflictResolution(options, {
+        relativePath: posixPath,
+        localContent,
+        upstreamContent: desired.content,
+      });
       if (resolution === 'overwrite') {
         await this.writeLocalFile(options.targetDir, posixPath, desired.content);
         updatedFiles.push(posixPath);
@@ -172,7 +182,11 @@ export class SyncCommand implements CliCommand {
         continue;
       }
 
-      const resolution = await this.determineConflictResolution(options, posixPath);
+      const resolution = await this.determineConflictResolution(options, {
+        relativePath: posixPath,
+        localContent,
+        upstreamContent: undefined,
+      });
       if (resolution === 'overwrite') {
         await this.deleteLocalFile(options.targetDir, posixPath);
         deletedFiles.push(posixPath);
@@ -246,13 +260,13 @@ export class SyncCommand implements CliCommand {
 
   private async determineConflictResolution(
     options: SyncOptions,
-    posixPath: string,
+    conflict: SyncConflict,
   ): Promise<ConflictResolution> {
     if (options.force === true) {
       return 'overwrite';
     }
     if (options.resolveConflict !== undefined) {
-      return options.resolveConflict(posixPath);
+      return options.resolveConflict(conflict);
     }
     return 'keep';
   }
