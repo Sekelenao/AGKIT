@@ -1,6 +1,7 @@
 import type { ConfigCommand } from '../command/config/config-command.js';
 import type { InitCommand } from '../command/init/init-command.js';
 import type { ListCommand } from '../command/list/list-command.js';
+import { SpecCommand } from '../command/spec/spec-command.js';
 import type { SyncCommand } from '../command/sync/sync-command.js';
 import type { UserConfig } from '../config/user-config.js';
 import type { UserConfigStore } from '../config/user-config-store.js';
@@ -26,6 +27,11 @@ const AVAILABLE_ACTIONS: readonly PromptChoice[] = [
     description: 'Set or update the Git repository URL and default branch/tag',
   },
   {
+    value: 'spec',
+    label: 'View template specification',
+    description: 'Print the template repository layout and JSON schemas',
+  },
+  {
     value: 'exit',
     label: 'Exit',
     description: 'Close agkit',
@@ -41,6 +47,7 @@ export class InteractiveRunner {
   private readonly initCommand: InitCommand;
   private readonly syncCommand: SyncCommand;
   private readonly outputFormatter: OutputFormatter;
+  private readonly specCommand: SpecCommand;
 
   constructor(
     configStore: UserConfigStore,
@@ -51,6 +58,7 @@ export class InteractiveRunner {
     initCommand: InitCommand,
     syncCommand: SyncCommand,
     outputFormatter: OutputFormatter = new OutputFormatter(false),
+    specCommand: SpecCommand = new SpecCommand(),
   ) {
     this.configStore = configStore;
     this.configCommand = configCommand;
@@ -60,6 +68,7 @@ export class InteractiveRunner {
     this.initCommand = initCommand;
     this.syncCommand = syncCommand;
     this.outputFormatter = outputFormatter;
+    this.specCommand = specCommand;
   }
 
   async run(targetDir: string): Promise<readonly string[]> {
@@ -116,6 +125,12 @@ export class InteractiveRunner {
 
     if (action === 'config') {
       await this.runConfiguration(config, summaryLines);
+      return summaryLines;
+    }
+
+    if (action === 'spec') {
+      const content = await this.specCommand.execute();
+      summaryLines.push(this.outputFormatter.formatMarkdownDocument(content).trimEnd());
       return summaryLines;
     }
 

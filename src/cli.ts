@@ -88,6 +88,7 @@ const interactiveRunner = new InteractiveRunner(
   initCommand,
   syncCommand,
   stdoutFormatter,
+  specCommand,
 );
 
 const commands: readonly CliCommand[] = [

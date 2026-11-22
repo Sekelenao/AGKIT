@@ -161,6 +161,7 @@ describe('InteractiveRunner', () => {
       'Initialize a project',
       'Synchronize templates',
       'Configure template repository',
+      'View template specification',
       'Exit',
     ]);
     expect(capturedModules.map((c) => c.value)).toEqual(['base']);
