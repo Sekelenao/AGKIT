@@ -81,24 +81,19 @@ export class InteractiveRunner {
     this.screen = screen;
   }
 
-  async run(targetDir: string): Promise<readonly string[]> {
-    const summaryLines: string[] = [];
+  async run(targetDir: string): Promise<void> {
     let noticeLines: readonly string[] = [];
     let config = await this.configStore.load();
 
     while (config === undefined) {
       this.renderFrame(undefined, targetDir, noticeLines);
       try {
-        const configOutcome = await this.runConfiguration(
-          undefined,
-          targetDir,
-          summaryLines,
-        );
+        const configOutcome = await this.runConfiguration(undefined, targetDir);
         config = configOutcome.config;
         noticeLines = configOutcome.lines;
       } catch (error: unknown) {
         if (error instanceof PromptCancelledError) {
-          return summaryLines;
+          return;
         }
         if (error instanceof CliError) {
           noticeLines = [this.outputFormatter.formatError(error.message)];
@@ -116,39 +111,35 @@ export class InteractiveRunner {
         action = await this.promptService.selectAction(AVAILABLE_ACTIONS);
       } catch (error: unknown) {
         if (error instanceof PromptCancelledError) {
-          return summaryLines;
+          return;
         }
         throw error;
       }
 
       if (action === 'exit') {
-        return summaryLines;
+        return;
       }
 
       noticeLines = [];
 
       try {
         if (action === 'init') {
-          noticeLines = await this.runInit(config, targetDir, summaryLines);
+          noticeLines = await this.runInit(config, targetDir);
           continue;
         }
 
         if (action === 'sync') {
-          noticeLines = await this.runSync(targetDir, summaryLines);
+          noticeLines = await this.runSync(targetDir);
           continue;
         }
 
         if (action === 'new') {
-          noticeLines = await this.runNew(targetDir, summaryLines);
+          noticeLines = await this.runNew(targetDir);
           continue;
         }
 
         if (action === 'config') {
-          const configOutcome = await this.runConfiguration(
-            config,
-            targetDir,
-            summaryLines,
-          );
+          const configOutcome = await this.runConfiguration(config, targetDir);
           config = configOutcome.config;
           noticeLines = configOutcome.lines;
           continue;
@@ -188,7 +179,6 @@ export class InteractiveRunner {
   private async runInit(
     config: UserConfig,
     targetDir: string,
-    summaryLines: string[],
   ): Promise<readonly string[]> {
     const { modules } = await this.listCommand.execute();
     if (modules.length === 0) {
@@ -229,16 +219,11 @@ export class InteractiveRunner {
         moduleIds,
       });
 
-      const formatted = this.outputFormatter.formatInitSummary(result);
-      summaryLines.push(...formatted);
-      return formatted;
+      return this.outputFormatter.formatInitSummary(result);
     }
   }
 
-  private async runNew(
-    targetDir: string,
-    summaryLines: string[],
-  ): Promise<readonly string[]> {
+  private async runNew(targetDir: string): Promise<readonly string[]> {
     const harnessChoices: readonly PromptChoice[] = this.harnessRegistry
       .listAll()
       .map((harness) => ({
@@ -251,29 +236,21 @@ export class InteractiveRunner {
       harnessName,
     });
 
-    const formatted = this.outputFormatter.formatNewSummary(result);
-    summaryLines.push(...formatted);
-    return formatted;
+    return this.outputFormatter.formatNewSummary(result);
   }
 
-  private async runSync(
-    targetDir: string,
-    summaryLines: string[],
-  ): Promise<readonly string[]> {
+  private async runSync(targetDir: string): Promise<readonly string[]> {
     const result = await this.syncCommand.execute({
       targetDir,
       resolveConflict: (conflict) => this.promptService.resolveConflict(conflict),
     });
 
-    const formatted = this.outputFormatter.formatSyncSummary(result);
-    summaryLines.push(...formatted);
-    return formatted;
+    return this.outputFormatter.formatSyncSummary(result);
   }
 
   private async runConfiguration(
     currentConfig: UserConfig | undefined,
     targetDir: string,
-    summaryLines: string[],
   ): Promise<{ readonly config: UserConfig; readonly lines: readonly string[] }> {
     let gitRepositoryUrl = currentConfig?.git_repository_url;
     let defaultRef = currentConfig?.default_ref;
@@ -296,11 +273,9 @@ export class InteractiveRunner {
         default_ref: defaultRef,
       });
 
-      const formatted = this.outputFormatter.formatConfigSummary(result);
-      summaryLines.push(...formatted);
       return {
         config: result.config,
-        lines: formatted,
+        lines: this.outputFormatter.formatConfigSummary(result),
       };
     }
   }

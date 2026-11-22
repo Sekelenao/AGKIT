@@ -284,9 +284,8 @@ describe('InteractiveRunner', () => {
       screen,
     );
 
-    const summary = await runner.run(projectDir);
+    await runner.run(projectDir);
 
-    expect(summary).toEqual([]);
     expect(writtenChunks.join('')).toContain('ERROR');
     expect(writtenChunks.join('')).toContain('.agkit.json');
   });
@@ -332,9 +331,8 @@ describe('InteractiveRunner', () => {
       new NewCommand(harnessRegistry, outputFormatter),
     );
 
-    const summary = await runner.run(scaffoldDir);
+    await runner.run(scaffoldDir);
 
-    expect(summary.join('\n')).toContain('Created template repository');
     const skillContent = await readFile(
       join(scaffoldDir, '.opencode', 'skills', 'agkit-template-authoring', 'SKILL.md'),
       'utf8',
@@ -381,7 +379,7 @@ describe('InteractiveRunner', () => {
       syncCommand,
     );
 
-    await expect(runner.run(tempDir)).resolves.toEqual([]);
+    await expect(runner.run(tempDir)).resolves.toBeUndefined();
     expect(menuCallCount).toBe(2);
   });
 
@@ -484,6 +482,6 @@ describe('InteractiveRunner', () => {
       syncCommand,
     );
 
-    await expect(runner.run(tempDir)).resolves.toEqual([]);
+    await expect(runner.run(tempDir)).resolves.toBeUndefined();
   });
 });

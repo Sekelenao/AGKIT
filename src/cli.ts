@@ -114,10 +114,7 @@ program
   .version(cliVersion)
   .action(async (): Promise<void> => {
     const cwd = process.cwd();
-    const summaryLines = await alternateScreen.run(() => interactiveRunner.run(cwd));
-    for (const line of summaryLines) {
-      console.log(line);
-    }
+    await alternateScreen.run(() => interactiveRunner.run(cwd));
   });
 
 for (const command of commands) {
