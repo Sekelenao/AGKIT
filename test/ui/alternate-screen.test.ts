@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { AlternateScreen } from '../../src/ui/alternate-screen.js';
 import type { TerminalOutputStream } from '../../src/ui/terminal-spinner.js';
 
-function createFakeStream(isTTY: boolean): {
+function createFakeStream(
+  isTTY: boolean,
+  rows?: number,
+): {
   readonly stream: TerminalOutputStream;
   readonly chunks: string[];
 } {
@@ -11,6 +14,7 @@ function createFakeStream(isTTY: boolean): {
     chunks,
     stream: {
       isTTY,
+      rows,
       write(chunk: string): boolean {
         chunks.push(chunk);
         return true;
@@ -66,5 +70,10 @@ describe('AlternateScreen', () => {
     const nonTtyScreen = new AlternateScreen(nonTty.stream);
     nonTtyScreen.clear();
     expect(nonTty.chunks).toEqual([]);
+  });
+
+  it('reports terminal rows only in a TTY', () => {
+    expect(new AlternateScreen(createFakeStream(true, 24).stream).getRows()).toBe(24);
+    expect(new AlternateScreen(createFakeStream(false, 24).stream).getRows()).toBeUndefined();
   });
 });

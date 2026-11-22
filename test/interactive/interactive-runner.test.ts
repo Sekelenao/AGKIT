@@ -319,6 +319,15 @@ describe('InteractiveRunner', () => {
     };
 
     const outputFormatter = new OutputFormatter(false);
+    const writtenChunks: string[] = [];
+    const shortScreen = new AlternateScreen({
+      isTTY: true,
+      rows: 22,
+      write(chunk: string): boolean {
+        writtenChunks.push(chunk);
+        return true;
+      },
+    });
     const runner = new InteractiveRunner(
       configStore,
       configCommand,
@@ -329,6 +338,8 @@ describe('InteractiveRunner', () => {
       syncCommand,
       outputFormatter,
       new NewCommand(harnessRegistry, outputFormatter),
+      undefined,
+      shortScreen,
     );
 
     await runner.run(scaffoldDir);
@@ -338,6 +349,10 @@ describe('InteractiveRunner', () => {
       'utf8',
     );
     expect(skillContent).toContain('agkit spec');
+
+    const renderedOutput = writtenChunks.join('');
+    expect(renderedOutput).toContain('Created template repository (12 files)');
+    expect(renderedOutput).toContain('… and 9 more');
   });
 
   it('returns to the menu when a sub-prompt is cancelled and exits cleanly on main menu cancel', async () => {

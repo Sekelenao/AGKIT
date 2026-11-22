@@ -3,6 +3,7 @@ import { UiTheme } from './ui-theme.js';
 
 export interface TerminalOutputStream {
   readonly isTTY?: boolean;
+  readonly rows?: number;
   write(chunk: string): boolean;
 }
 

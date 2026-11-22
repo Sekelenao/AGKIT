@@ -119,4 +119,27 @@ describe('OutputFormatter', () => {
       '  file_regex   │ string │ No      ',
     ]);
   });
+
+  it('truncates notice lines while preserving the header and remaining count', () => {
+    const formatter = new OutputFormatter(false);
+    const lines = [
+      '◇  Created template repository (5 files)',
+      '   +  file-1',
+      '   +  file-2',
+      '   +  file-3',
+      '   +  file-4',
+      '   +  file-5',
+    ];
+
+    expect(formatter.truncateNoticeLines(lines, 10)).toEqual(lines);
+    expect(formatter.truncateNoticeLines(lines, 4)).toEqual([
+      '◇  Created template repository (5 files)',
+      '   +  file-1',
+      '   +  file-2',
+      '   … and 3 more',
+    ]);
+    expect(formatter.truncateNoticeLines(lines, 1)).toEqual([
+      '◇  Created template repository (5 files)',
+    ]);
+  });
 });

@@ -177,6 +177,23 @@ export class OutputFormatter {
     return `${this.theme.errorBold(`${THEME_SYMBOLS.error} ERROR`)}  ${this.theme.bright(message)}`;
   }
 
+  truncateNoticeLines(lines: readonly string[], maxLines: number): readonly string[] {
+    if (lines.length === 0 || lines.length <= maxLines) {
+      return lines;
+    }
+
+    if (maxLines <= 1) {
+      return lines.slice(0, 1);
+    }
+
+    const visibleCount = maxLines - 1;
+    const hiddenCount = lines.length - visibleCount;
+    return [
+      ...lines.slice(0, visibleCount),
+      `   ${this.theme.dim(`… and ${hiddenCount} more`)}`,
+    ];
+  }
+
   formatMarkdownDocument(markdown: string): string {
     if (!this.useColor) {
       return markdown;

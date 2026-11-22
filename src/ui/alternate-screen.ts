@@ -11,6 +11,10 @@ export class AlternateScreen {
     this.stream = stream;
   }
 
+  getRows(): number | undefined {
+    return this.stream.isTTY === true ? this.stream.rows : undefined;
+  }
+
   clear(): void {
     if (this.stream.isTTY === true) {
       this.stream.write(CLEAR_SCREEN);

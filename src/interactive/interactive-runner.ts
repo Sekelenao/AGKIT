@@ -14,6 +14,8 @@ import type { AlternateScreen } from '../ui/alternate-screen.js';
 import type { BannerRenderer } from '../ui/banner-renderer.js';
 import { OutputFormatter } from '../ui/output-formatter.js';
 
+const RESERVED_INTERACTIVE_ROWS = 17;
+
 const AVAILABLE_ACTIONS: readonly PromptChoice[] = [
   {
     value: 'init',
@@ -172,7 +174,15 @@ export class InteractiveRunner {
       cwd: targetDir,
     });
     if (noticeLines.length > 0) {
-      this.screen?.writeLines(noticeLines);
+      const terminalRows = this.screen?.getRows();
+      const linesToRender =
+        terminalRows === undefined
+          ? noticeLines
+          : this.outputFormatter.truncateNoticeLines(
+              noticeLines,
+              Math.max(1, terminalRows - RESERVED_INTERACTIVE_ROWS),
+            );
+      this.screen?.writeLines(linesToRender);
     }
   }
 
