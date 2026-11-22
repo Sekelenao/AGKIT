@@ -15,22 +15,58 @@ describe('DirectoryAgentHandler', () => {
     await rm(tempDir, { recursive: true, force: true });
   });
 
-  it('writes an agent markdown file inside the configured root directory and returns its relative path', async () => {
+  it('writes agent markdown files with generated frontmatter inside the configured root directory', async () => {
     const handler = new DirectoryAgentHandler(join('.opencode', 'agents'));
-    const content = '# Code Reviewer\n\nReview changes carefully.\n';
 
-    const writtenPath = await handler.write(tempDir, 'code-reviewer', content);
+    const written = await handler.writeAll(tempDir, [
+      {
+        name: 'code-reviewer',
+        displayName: 'Code Reviewer',
+        description: 'Reviews pull requests',
+        capabilities: ['read', 'skill'],
+        prompt: '# Code Reviewer\n\nReview changes carefully.\n',
+      },
+    ]);
 
-    expect(writtenPath).toBe(join('.opencode', 'agents', 'code-reviewer.md'));
-    await expect(readFile(join(tempDir, writtenPath), 'utf8')).resolves.toBe(content);
+    const expectedContent =
+      '---\nname: code-reviewer\ndescription: "Reviews pull requests"\n---\n\n# Code Reviewer\n\nReview changes carefully.\n';
+
+    expect(written).toEqual([
+      {
+        relativePath: join('.opencode', 'agents', 'code-reviewer.md'),
+        content: expectedContent,
+      },
+    ]);
+    await expect(
+      readFile(join(tempDir, '.opencode', 'agents', 'code-reviewer.md'), 'utf8'),
+    ).resolves.toBe(expectedContent);
   });
 
   it('overwrites an existing agent file with updated content', async () => {
     const handler = new DirectoryAgentHandler(join('.agents', 'agents'));
 
-    await handler.write(tempDir, 'architect', 'v1');
-    const writtenPath = await handler.write(tempDir, 'architect', 'v2');
+    await handler.writeAll(tempDir, [
+      {
+        name: 'architect',
+        displayName: 'Architect',
+        description: 'Designs systems',
+        capabilities: ['read'],
+        prompt: 'v1',
+      },
+    ]);
+    const written = await handler.writeAll(tempDir, [
+      {
+        name: 'architect',
+        displayName: 'Architect',
+        description: 'Designs systems',
+        capabilities: ['read'],
+        prompt: 'v2',
+      },
+    ]);
 
-    await expect(readFile(join(tempDir, writtenPath), 'utf8')).resolves.toBe('v2');
+    expect(written[0]?.relativePath).toBe(join('.agents', 'agents', 'architect.md'));
+    await expect(
+      readFile(join(tempDir, '.agents', 'agents', 'architect.md'), 'utf8'),
+    ).resolves.toContain('\n\nv2\n');
   });
 });

@@ -35,8 +35,13 @@ async function createLocalRemoteRepo(baseDir: string): Promise<string> {
   );
   await writeFile(join(workDir, 'modules', 'base', 'ROOT.md'), '# Base Guide\n', 'utf8');
   await writeFile(
+    join(workDir, 'modules', 'base', 'skills', 'example', 'skill.json'),
+    JSON.stringify({ description: 'Example skill' }),
+    'utf8',
+  );
+  await writeFile(
     join(workDir, 'modules', 'base', 'skills', 'example', 'SKILL.md'),
-    '---\nname: example\n---\n',
+    '# Example Skill\n',
     'utf8',
   );
 

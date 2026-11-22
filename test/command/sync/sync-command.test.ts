@@ -38,7 +38,7 @@ async function createTemplateRemoteRepo(baseDir: string): Promise<RemoteRepoFixt
 
   await mkdir(remoteDir, { recursive: true });
   await mkdir(join(workDir, 'modules', 'base', 'skills', 'git'), { recursive: true });
-  await mkdir(join(workDir, 'modules', 'base', 'agents'), { recursive: true });
+  await mkdir(join(workDir, 'modules', 'base', 'agents', 'old-agent'), { recursive: true });
   await simpleGit(remoteDir).init(true, ['--initial-branch=main']);
 
   await writeFile(
@@ -48,12 +48,22 @@ async function createTemplateRemoteRepo(baseDir: string): Promise<RemoteRepoFixt
   );
   await writeFile(join(workDir, 'modules', 'base', 'ROOT.md'), '# Base v1\n', 'utf8');
   await writeFile(
+    join(workDir, 'modules', 'base', 'skills', 'git', 'skill.json'),
+    JSON.stringify({ description: 'Git skill' }),
+    'utf8',
+  );
+  await writeFile(
     join(workDir, 'modules', 'base', 'skills', 'git', 'SKILL.md'),
     '# Git v1\n',
     'utf8',
   );
   await writeFile(
-    join(workDir, 'modules', 'base', 'agents', 'old-agent.md'),
+    join(workDir, 'modules', 'base', 'agents', 'old-agent', 'agent.json'),
+    JSON.stringify({ display_name: 'Old Agent', description: 'Legacy agent' }),
+    'utf8',
+  );
+  await writeFile(
+    join(workDir, 'modules', 'base', 'agents', 'old-agent', 'PROMPT.md'),
     '# Old Agent\n',
     'utf8',
   );
@@ -143,11 +153,22 @@ describe('SyncCommand', () => {
     const projectCustomAgent = join(projectDir, '.opencode', 'agents', 'project-custom.md');
     await writeFile(projectCustomAgent, '# Project Only\n', 'utf8');
 
-    // Upstream changes: update ROOT.md, delete old-agent.md, add new-agent.md
+    // Upstream changes: update ROOT.md, delete old-agent, add new-agent
     await writeFile(join(fixture.workDir, 'modules', 'base', 'ROOT.md'), '# Base v2\n', 'utf8');
-    await rm(join(fixture.workDir, 'modules', 'base', 'agents', 'old-agent.md'));
+    await rm(join(fixture.workDir, 'modules', 'base', 'agents', 'old-agent'), {
+      recursive: true,
+      force: true,
+    });
+    await mkdir(join(fixture.workDir, 'modules', 'base', 'agents', 'new-agent'), {
+      recursive: true,
+    });
     await writeFile(
-      join(fixture.workDir, 'modules', 'base', 'agents', 'new-agent.md'),
+      join(fixture.workDir, 'modules', 'base', 'agents', 'new-agent', 'agent.json'),
+      JSON.stringify({ display_name: 'New Agent', description: 'Newly added agent' }),
+      'utf8',
+    );
+    await writeFile(
+      join(fixture.workDir, 'modules', 'base', 'agents', 'new-agent', 'PROMPT.md'),
       '# New Agent\n',
       'utf8',
     );
@@ -163,7 +184,9 @@ describe('SyncCommand', () => {
     await expect(readFile(join(projectDir, 'AGENTS.md'), 'utf8')).resolves.toBe('# Base v2\n');
     await expect(
       readFile(join(projectDir, '.opencode', 'agents', 'new-agent.md'), 'utf8'),
-    ).resolves.toBe('# New Agent\n');
+    ).resolves.toBe(
+      '---\nname: new-agent\ndescription: "Newly added agent"\n---\n\n# New Agent\n',
+    );
     await expect(
       pathExists(join(projectDir, '.opencode', 'agents', 'old-agent.md')),
     ).resolves.toBe(false);

@@ -1,13 +1,7 @@
-export interface SkillFileEntry {
-  readonly relativePath: string;
-  readonly content: string;
-}
+import type { TemplateSkill } from '../template/template-module.js';
+import type { RenderedFile } from './rendered-file.js';
 
 export interface SkillHandler {
-  relativePath(skillName: string, fileRelativePath?: string): string;
-  write(
-    targetDir: string,
-    skillName: string,
-    files: readonly SkillFileEntry[],
-  ): Promise<readonly string[]>;
+  render(skill: TemplateSkill): readonly RenderedFile[];
+  write(targetDir: string, skill: TemplateSkill): Promise<readonly RenderedFile[]>;
 }

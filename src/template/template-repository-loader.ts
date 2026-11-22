@@ -1,7 +1,22 @@
 import type { Dirent } from 'node:fs';
 import { readdir, readFile } from 'node:fs/promises';
 import { join, posix } from 'node:path';
-import { MODULE_ID_PATTERN, type ModuleManifest, moduleManifestSchema } from './module-manifest.js';
+import type { z } from 'zod';
+import {
+  AGENT_ID_PATTERN,
+  type AgentManifest,
+  agentManifestSchema,
+} from './agent-manifest.js';
+import {
+  MODULE_ID_PATTERN,
+  type ModuleManifest,
+  moduleManifestSchema,
+} from './module-manifest.js';
+import {
+  SKILL_ID_PATTERN,
+  type SkillManifest,
+  skillManifestSchema,
+} from './skill-manifest.js';
 import type {
   SkillFile,
   TemplateAgent,
@@ -14,8 +29,11 @@ const MODULES_DIR_NAME = 'modules';
 const MANIFEST_FILE_NAME = 'module.json';
 const ROOT_INSTRUCTIONS_FILE_NAME = 'ROOT.md';
 const SKILLS_DIR_NAME = 'skills';
+const SKILL_MANIFEST_FILE_NAME = 'skill.json';
 const SKILL_ENTRY_FILE_NAME = 'SKILL.md';
 const AGENTS_DIR_NAME = 'agents';
+const AGENT_MANIFEST_FILE_NAME = 'agent.json';
+const AGENT_PROMPT_FILE_NAME = 'PROMPT.md';
 
 export class TemplateRepositoryLoader {
   async loadAll(repoDir: string): Promise<readonly TemplateModule[]> {
@@ -45,12 +63,17 @@ export class TemplateRepositoryLoader {
   }
 
   private async loadModule(moduleDir: string, moduleId: string): Promise<TemplateModule> {
-    const manifest = await this.loadManifest(moduleDir, moduleId);
+    const manifest = await this.loadJsonManifest<ModuleManifest>(
+      join(moduleDir, MANIFEST_FILE_NAME),
+      moduleManifestSchema,
+      `Module "${moduleId}" is missing required ${MANIFEST_FILE_NAME}.`,
+      `Invalid ${MANIFEST_FILE_NAME} in module "${moduleId}"`,
+    );
     const rootInstructions = await this.readOptionalTextFile(
       join(moduleDir, ROOT_INSTRUCTIONS_FILE_NAME),
     );
     const skills = await this.loadSkills(join(moduleDir, SKILLS_DIR_NAME), moduleId);
-    const agents = await this.loadAgents(join(moduleDir, AGENTS_DIR_NAME));
+    const agents = await this.loadAgents(join(moduleDir, AGENTS_DIR_NAME), moduleId);
 
     return {
       id: moduleId,
@@ -61,38 +84,6 @@ export class TemplateRepositoryLoader {
       skills,
       agents,
     };
-  }
-
-  private async loadManifest(moduleDir: string, moduleId: string): Promise<ModuleManifest> {
-    const manifestPath = join(moduleDir, MANIFEST_FILE_NAME);
-    const raw = await this.readOptionalTextFile(manifestPath);
-    if (raw === undefined) {
-      throw new TemplateRepositoryError(
-        `Module "${moduleId}" is missing required ${MANIFEST_FILE_NAME}.`,
-      );
-    }
-
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(raw);
-    } catch (error: unknown) {
-      throw new TemplateRepositoryError(
-        `Invalid JSON in ${manifestPath}.`,
-        { cause: error },
-      );
-    }
-
-    const result = moduleManifestSchema.safeParse(parsed);
-    if (!result.success) {
-      const details = result.error.issues
-        .map((issue) => `${issue.path.join('.') || 'manifest'}: ${issue.message}`)
-        .join('; ');
-      throw new TemplateRepositoryError(
-        `Invalid ${MANIFEST_FILE_NAME} in module "${moduleId}": ${details}`,
-      );
-    }
-
-    return result.data;
   }
 
   private async loadSkills(
@@ -111,23 +102,129 @@ export class TemplateRepositoryLoader {
 
     const skills: TemplateSkill[] = [];
     for (const skillName of skillDirs) {
-      const skillDir = join(skillsDir, skillName);
-      const files = await this.collectFilesRecursively(skillDir, '');
-      const hasEntryFile = files.some((file) => file.relativePath === SKILL_ENTRY_FILE_NAME);
+      if (!SKILL_ID_PATTERN.test(skillName)) {
+        throw new TemplateRepositoryError(
+          `Invalid skill directory name "${skillName}" in module "${moduleId}". Skill IDs must be lowercase kebab-case.`,
+        );
+      }
 
-      if (!hasEntryFile) {
+      const skillDir = join(skillsDir, skillName);
+      const manifest = await this.loadJsonManifest<SkillManifest>(
+        join(skillDir, SKILL_MANIFEST_FILE_NAME),
+        skillManifestSchema,
+        `Skill "${skillName}" in module "${moduleId}" is missing required ${SKILL_MANIFEST_FILE_NAME}.`,
+        `Invalid ${SKILL_MANIFEST_FILE_NAME} in skill "${skillName}" (module "${moduleId}")`,
+      );
+      const instructions = await this.readOptionalTextFile(
+        join(skillDir, SKILL_ENTRY_FILE_NAME),
+      );
+      if (instructions === undefined) {
         throw new TemplateRepositoryError(
           `Skill "${skillName}" in module "${moduleId}" is missing required ${SKILL_ENTRY_FILE_NAME}.`,
         );
       }
 
+      const allFiles = await this.collectFilesRecursively(skillDir, '');
+      const companionFiles = allFiles.filter(
+        (file) =>
+          file.relativePath !== SKILL_MANIFEST_FILE_NAME &&
+          file.relativePath !== SKILL_ENTRY_FILE_NAME,
+      );
+
       skills.push({
         name: skillName,
-        files,
+        description: manifest.description,
+        instructions,
+        companionFiles,
       });
     }
 
     return skills;
+  }
+
+  private async loadAgents(
+    agentsDir: string,
+    moduleId: string,
+  ): Promise<readonly TemplateAgent[]> {
+    const entries = await this.readOptionalDirectory(agentsDir);
+    if (entries === undefined) {
+      return [];
+    }
+
+    const agentDirs = entries
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .sort((a, b) => a.localeCompare(b));
+
+    const agents: TemplateAgent[] = [];
+    for (const agentName of agentDirs) {
+      if (!AGENT_ID_PATTERN.test(agentName)) {
+        throw new TemplateRepositoryError(
+          `Invalid agent directory name "${agentName}" in module "${moduleId}". Agent IDs must be lowercase kebab-case.`,
+        );
+      }
+
+      const agentDir = join(agentsDir, agentName);
+      const manifest = await this.loadJsonManifest<AgentManifest>(
+        join(agentDir, AGENT_MANIFEST_FILE_NAME),
+        agentManifestSchema,
+        `Agent "${agentName}" in module "${moduleId}" is missing required ${AGENT_MANIFEST_FILE_NAME}.`,
+        `Invalid ${AGENT_MANIFEST_FILE_NAME} in agent "${agentName}" (module "${moduleId}")`,
+      );
+      const prompt = await this.readOptionalTextFile(
+        join(agentDir, AGENT_PROMPT_FILE_NAME),
+      );
+      if (prompt === undefined) {
+        throw new TemplateRepositoryError(
+          `Agent "${agentName}" in module "${moduleId}" is missing required ${AGENT_PROMPT_FILE_NAME}.`,
+        );
+      }
+
+      agents.push({
+        name: agentName,
+        displayName: manifest.display_name,
+        description: manifest.description,
+        ...(manifest.when_to_use === undefined
+          ? {}
+          : { whenToUse: manifest.when_to_use }),
+        capabilities: manifest.capabilities,
+        ...(manifest.file_regex === undefined ? {} : { fileRegex: manifest.file_regex }),
+        prompt,
+      });
+    }
+
+    return agents;
+  }
+
+  private async loadJsonManifest<T>(
+    filePath: string,
+    schema: z.ZodType<T>,
+    missingMessage: string,
+    invalidPrefix: string,
+  ): Promise<T> {
+    const raw = await this.readOptionalTextFile(filePath);
+    if (raw === undefined) {
+      throw new TemplateRepositoryError(missingMessage);
+    }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (error: unknown) {
+      throw new TemplateRepositoryError(`Invalid JSON in ${filePath}.`, {
+        cause: error,
+      });
+    }
+
+    const result = schema.safeParse(parsed);
+    if (!result.success) {
+      const details = result.error.issues
+        .map((issue) => `${issue.path.join('.') || 'manifest'}: ${issue.message}`)
+        .join('; ');
+      throw new TemplateRepositoryError(`${invalidPrefix}: ${details}`);
+    }
+
+    return result.data;
   }
 
   private async collectFilesRecursively(
@@ -156,26 +253,6 @@ export class TemplateRepositoryLoader {
     }
 
     return files;
-  }
-
-  private async loadAgents(agentsDir: string): Promise<readonly TemplateAgent[]> {
-    const entries = await this.readOptionalDirectory(agentsDir);
-    if (entries === undefined) {
-      return [];
-    }
-
-    const sorted = entries
-      .filter((entry) => entry.isFile() && entry.name.endsWith('.md'))
-      .sort((a, b) => a.name.localeCompare(b.name));
-    const agents: TemplateAgent[] = [];
-
-    for (const entry of sorted) {
-      const name = entry.name.slice(0, -'.md'.length);
-      const content = await readFile(join(agentsDir, entry.name), 'utf8');
-      agents.push({ name, content });
-    }
-
-    return agents;
   }
 
   private validateGraph(modules: readonly TemplateModule[]): void {

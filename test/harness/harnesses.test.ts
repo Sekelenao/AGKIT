@@ -3,6 +3,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { AntigravityHarness } from '../../src/harness/antigravity/antigravity-harness.js';
+import { BobHarness } from '../../src/harness/bob/bob-harness.js';
+import { ClaudeHarness } from '../../src/harness/claude/claude-harness.js';
+import { CodexHarness } from '../../src/harness/codex/codex-harness.js';
 import type { Harness } from '../../src/harness/harness.js';
 import { OpencodeHarness } from '../../src/harness/opencode/opencode-harness.js';
 
@@ -38,6 +41,27 @@ describe('Harness default handlers', () => {
       expectedAgentPath: join('.agents', 'agents', 'reviewer.md'),
       expectedRootInstructionsPath: 'AGENTS.md',
     },
+    {
+      label: 'ClaudeHarness',
+      createHarness: () => new ClaudeHarness(),
+      expectedSkillPath: join('.claude', 'skills', 'testing', 'SKILL.md'),
+      expectedAgentPath: join('.claude', 'agents', 'reviewer.md'),
+      expectedRootInstructionsPath: 'CLAUDE.md',
+    },
+    {
+      label: 'CodexHarness',
+      createHarness: () => new CodexHarness(),
+      expectedSkillPath: join('.agents', 'skills', 'testing', 'SKILL.md'),
+      expectedAgentPath: join('.codex', 'agents', 'reviewer.md'),
+      expectedRootInstructionsPath: 'AGENTS.md',
+    },
+    {
+      label: 'BobHarness',
+      createHarness: () => new BobHarness(),
+      expectedSkillPath: join('.bob', 'skills', 'testing', 'SKILL.md'),
+      expectedAgentPath: join('.bob', 'custom_modes.yaml'),
+      expectedRootInstructionsPath: 'AGENTS.md',
+    },
   ])(
     '$label writes skills, agents, and root instructions to its expected locations',
     async ({
@@ -48,20 +72,33 @@ describe('Harness default handlers', () => {
     }) => {
       const harness = createHarness();
 
-      const skillPaths = await harness.skills.write(tempDir, 'testing', [
-        { relativePath: 'SKILL.md', content: '# Testing Skill' },
+      const skillFiles = await harness.skills.write(tempDir, {
+        name: 'testing',
+        description: 'Testing skill',
+        instructions: '# Testing Skill',
+        companionFiles: [],
+      });
+      const agentFiles = await harness.agents.writeAll(tempDir, [
+        {
+          name: 'reviewer',
+          displayName: 'Reviewer',
+          description: 'Reviews code',
+          capabilities: ['read'],
+          prompt: '# Reviewer Agent',
+        },
       ]);
-      const agentPath = await harness.agents.write(tempDir, 'reviewer', '# Reviewer Agent');
       const rootPath = await harness.rootInstructions.write(tempDir, '# Root Instructions');
 
-      expect(skillPaths).toEqual([expectedSkillPath]);
-      expect(agentPath).toBe(expectedAgentPath);
+      expect(skillFiles.map((file) => file.relativePath)).toEqual([expectedSkillPath]);
+      expect(agentFiles.map((file) => file.relativePath)).toEqual([expectedAgentPath]);
       expect(rootPath).toBe(expectedRootInstructionsPath);
 
-      await expect(readFile(join(tempDir, expectedSkillPath), 'utf8')).resolves.toBe(
+      await expect(readFile(join(tempDir, expectedSkillPath), 'utf8')).resolves.toContain(
         '# Testing Skill',
       );
-      await expect(readFile(join(tempDir, agentPath), 'utf8')).resolves.toBe('# Reviewer Agent');
+      await expect(readFile(join(tempDir, expectedAgentPath), 'utf8')).resolves.toContain(
+        '# Reviewer Agent',
+      );
       await expect(readFile(join(tempDir, rootPath), 'utf8')).resolves.toBe('# Root Instructions');
     },
   );

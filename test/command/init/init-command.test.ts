@@ -25,7 +25,7 @@ async function createTemplateRemoteRepo(baseDir: string): Promise<string> {
   await mkdir(join(workDir, 'modules', 'base', 'skills', 'git', 'references'), {
     recursive: true,
   });
-  await mkdir(join(workDir, 'modules', 'base', 'agents'), { recursive: true });
+  await mkdir(join(workDir, 'modules', 'base', 'agents', 'reviewer'), { recursive: true });
   await mkdir(join(workDir, 'modules', 'flink', 'skills', 'flink'), { recursive: true });
   await simpleGit(remoteDir).init(true, ['--initial-branch=main']);
 
@@ -35,6 +35,11 @@ async function createTemplateRemoteRepo(baseDir: string): Promise<string> {
     'utf8',
   );
   await writeFile(join(workDir, 'modules', 'base', 'ROOT.md'), '# Base Guide\n', 'utf8');
+  await writeFile(
+    join(workDir, 'modules', 'base', 'skills', 'git', 'skill.json'),
+    JSON.stringify({ description: 'Git rules' }),
+    'utf8',
+  );
   await writeFile(
     join(workDir, 'modules', 'base', 'skills', 'git', 'SKILL.md'),
     '# Git Skill\n',
@@ -46,7 +51,12 @@ async function createTemplateRemoteRepo(baseDir: string): Promise<string> {
     'utf8',
   );
   await writeFile(
-    join(workDir, 'modules', 'base', 'agents', 'reviewer.md'),
+    join(workDir, 'modules', 'base', 'agents', 'reviewer', 'agent.json'),
+    JSON.stringify({ display_name: 'Reviewer', description: 'Reviews code' }),
+    'utf8',
+  );
+  await writeFile(
+    join(workDir, 'modules', 'base', 'agents', 'reviewer', 'PROMPT.md'),
     '# Reviewer\n',
     'utf8',
   );
@@ -61,6 +71,11 @@ async function createTemplateRemoteRepo(baseDir: string): Promise<string> {
     'utf8',
   );
   await writeFile(join(workDir, 'modules', 'flink', 'ROOT.md'), '## Flink Guide\n', 'utf8');
+  await writeFile(
+    join(workDir, 'modules', 'flink', 'skills', 'flink', 'skill.json'),
+    JSON.stringify({ description: 'Flink rules' }),
+    'utf8',
+  );
   await writeFile(
     join(workDir, 'modules', 'flink', 'skills', 'flink', 'SKILL.md'),
     '# Flink Skill\n',
@@ -126,11 +141,18 @@ describe('InitCommand', () => {
       moduleIds: ['flink'],
     });
 
+    const expectedGitSkill =
+      '---\nname: git\ndescription: "Git rules"\n---\n\n# Git Skill\n';
+    const expectedFlinkSkill =
+      '---\nname: flink\ndescription: "Flink rules"\n---\n\n# Flink Skill\n';
+    const expectedReviewerAgent =
+      '---\nname: reviewer\ndescription: "Reviews code"\n---\n\n# Reviewer\n';
+
     expect(result.resolvedModuleIds).toEqual(['base', 'flink']);
     expect(result.writtenFiles).toEqual([
       'AGENTS.md',
-      join('.opencode', 'skills', 'git', 'references', 'commits.md'),
       join('.opencode', 'skills', 'git', 'SKILL.md'),
+      join('.opencode', 'skills', 'git', 'references', 'commits.md'),
       join('.opencode', 'skills', 'flink', 'SKILL.md'),
       join('.opencode', 'agents', 'reviewer.md'),
       '.agkit.json',
@@ -142,9 +164,9 @@ describe('InitCommand', () => {
       modules: ['flink'],
       git_repository_url: remoteRepoUrl,
       managed_files: {
-        '.opencode/agents/reviewer.md': contentHasher.hash('# Reviewer\n'),
-        '.opencode/skills/flink/SKILL.md': contentHasher.hash('# Flink Skill\n'),
-        '.opencode/skills/git/SKILL.md': contentHasher.hash('# Git Skill\n'),
+        '.opencode/agents/reviewer.md': contentHasher.hash(expectedReviewerAgent),
+        '.opencode/skills/flink/SKILL.md': contentHasher.hash(expectedFlinkSkill),
+        '.opencode/skills/git/SKILL.md': contentHasher.hash(expectedGitSkill),
         '.opencode/skills/git/references/commits.md': contentHasher.hash('# Commits\n'),
         'AGENTS.md': contentHasher.hash('# Base Guide\n\n## Flink Guide\n'),
       },
@@ -158,7 +180,7 @@ describe('InitCommand', () => {
     ).resolves.toBe('# Commits\n');
     await expect(
       readFile(join(projectDir, '.opencode', 'agents', 'reviewer.md'), 'utf8'),
-    ).resolves.toBe('# Reviewer\n');
+    ).resolves.toBe(expectedReviewerAgent);
   });
 
   it('writes templates to Antigravity paths via alias "agy"', async () => {
@@ -173,8 +195,8 @@ describe('InitCommand', () => {
     expect(result.resolvedModuleIds).toEqual(['base']);
     expect(result.writtenFiles).toEqual([
       'AGENTS.md',
-      join('.agents', 'skills', 'git', 'references', 'commits.md'),
       join('.agents', 'skills', 'git', 'SKILL.md'),
+      join('.agents', 'skills', 'git', 'references', 'commits.md'),
       join('.agents', 'agents', 'reviewer.md'),
       '.agkit.json',
     ]);

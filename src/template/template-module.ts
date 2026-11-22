@@ -1,3 +1,5 @@
+import type { AgentCapability } from './agent-manifest.js';
+
 export interface SkillFile {
   readonly relativePath: string;
   readonly content: string;
@@ -5,12 +7,19 @@ export interface SkillFile {
 
 export interface TemplateSkill {
   readonly name: string;
-  readonly files: readonly SkillFile[];
+  readonly description: string;
+  readonly instructions: string;
+  readonly companionFiles: readonly SkillFile[];
 }
 
 export interface TemplateAgent {
   readonly name: string;
-  readonly content: string;
+  readonly displayName: string;
+  readonly description: string;
+  readonly whenToUse?: string;
+  readonly capabilities: readonly AgentCapability[];
+  readonly fileRegex?: string;
+  readonly prompt: string;
 }
 
 export interface TemplateModule {

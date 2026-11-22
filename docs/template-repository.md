@@ -1,10 +1,10 @@
 # Template Repository Specification
 
-This document defines the structure, metadata schema, resolution rules, and validation invariants of a central Git template repository consumed by `agkit`.
+This document defines the structure, metadata schemas, resolution rules, and validation invariants of a central Git template repository consumed by `agkit`.
 
 ## 1. Repository Layout
 
-All composable modules live inside a dedicated `modules/` directory at the root of the template repository. The repository root itself remains free for documentation, CI workflows, scripts, or tooling.
+All composable modules live inside a dedicated `modules/` directory at the root of the template repository. Every structured artifact uses a consistent `JSON + Markdown` split (`module.json` + `ROOT.md`, `skill.json` + `SKILL.md`, `agent.json` + `PROMPT.md`) so metadata is strictly validated with Zod while instructions remain pure Markdown without manual frontmatter.
 
 ```text
 templates-repo/
@@ -15,128 +15,109 @@ templates-repo/
     │   ├── ROOT.md
     │   ├── skills/
     │   │   └── git-conventions/
+    │   │       ├── skill.json
     │   │       ├── SKILL.md
     │   │       └── references/
     │   │           └── commit-examples.md
     │   └── agents/
-    │       └── code-reviewer.md
+    │       └── code-reviewer/
+    │           ├── agent.json
+    │           └── PROMPT.md
     ├── java-base/
     │   ├── module.json
     │   ├── ROOT.md
     │   └── skills/
     │       └── junit-testing/
+    │           ├── skill.json
     │           └── SKILL.md
-    ├── flink/
-    │   ├── module.json
-    │   ├── ROOT.md
-    │   └── skills/
-    │       └── flink-streaming/
-    │           ├── SKILL.md
-    │           └── scripts/
-    │               └── check-topology.sh
-    └── front/
+    └── flink/
         ├── module.json
         ├── ROOT.md
         └── skills/
-            └── react-conventions/
-                └── SKILL.md
+            └── flink-streaming/
+                ├── skill.json
+                ├── SKILL.md
+                └── scripts/
+                    └── check-topology.sh
 ```
 
 ### Auto-Discovery
 
 - `agkit` discovers modules automatically by scanning immediate subdirectories of `modules/`.
-- There is no central catalog file: each module directory is self-describing via its `module.json`.
-- Every module under `modules/` is selectable by users (there is no `abstract` or hidden module concept).
+- There is no central catalog file: each module, skill, and agent directory is self-describing via its JSON manifest.
+- Every module under `modules/` is selectable by users.
 - There is no implicit or magic `base` module: if a module builds on `base`, it must declare `"extends": ["base"]` explicitly.
 
-## 2. Module Identity & `module.json` Schema
+## 2. Schemas (`snake_case` JSON validated by Zod)
 
-The canonical **module ID** is the directory name under `modules/` (single source of truth).
+All IDs (`<module-id>`, `<skill-id>`, `<agent-id>`) are derived from their directory name and must be lowercase `kebab-case` (`^[a-z0-9]+(?:-[a-z0-9]+)*$`).
 
-- Module IDs must use lowercase `kebab-case` (e.g. `base`, `java-base`, `flink`, `spring-boot`), matching `^[a-z0-9]+(?:-[a-z0-9]+)*$`.
-- Every module directory **must** contain a `module.json` file with `snake_case` keys:
+### `module.json`
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `display_name` | `string` (trimmed, non-empty) | Yes | Human-readable name displayed in `agkit list` and interactive menus. |
-| `description` | `string` (trimmed, non-empty) | Yes | Short summary of what the module provides. |
-| `extends` | `string[]` (trimmed, non-empty IDs) | No | Ordered list of parent module IDs this module depends on. Defaults to `[]`. |
+| `display_name` | `string` (non-empty) | Yes | Human-readable name displayed in `agkit list` and interactive menus. |
+| `description` | `string` (non-empty) | Yes | Short summary of what the module provides. |
+| `extends` | `string[]` (kebab-case IDs) | No | Ordered list of parent module IDs. Defaults to `[]`. |
 
-### Example `module.json`
+### `skills/<skill-id>/skill.json`
 
-```json
-{
-  "display_name": "Apache Flink",
-  "description": "Streaming conventions, skills, and agents for Flink jobs",
-  "extends": ["java-base"]
-}
-```
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `description` | `string` (non-empty) | Yes | Concise trigger description rendered into the target harness `SKILL.md` frontmatter. |
+
+### `agents/<agent-id>/agent.json`
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `display_name` | `string` (non-empty) | Yes | Human-readable agent/mode name. |
+| `description` | `string` (non-empty) | Yes | Short summary of the agent's role. |
+| `when_to_use` | `string` (non-empty) | No | Guidance for when the harness should invoke/suggest this agent (defaults to `description`). |
+| `capabilities` | `AgentCapability[]` | No | Internal capability enum: `"read"`, `"edit"`, `"execute"`, `"skill"`, `"subagent"`. Defaults to all capabilities. |
+| `file_regex` | `string` (non-empty) | No | Optional file path regex restriction (used by harnesses that support file scoping such as IBM Bob). |
 
 ## 3. Module Content Structure
 
-Inside `modules/<module-id>/`, all artifact directories and files are optional (except `module.json`):
+Inside `modules/<module-id>/`, all artifact directories and files are optional except `module.json`:
 
 | Path inside module | Required | Semantics |
 | --- | --- | --- |
 | `module.json` | Yes | Module metadata and parent dependencies (`extends`). |
-| `ROOT.md` | No | Root project instructions contributed by this module. |
-| `skills/<skill-name>/` | No | Skill directory. Must contain a `SKILL.md` file and may contain optional companion files/directories (`references/`, `scripts/`, etc.) copied as-is. |
-| `agents/<agent-name>.md` | No | Specialized subagent definition file. |
+| `ROOT.md` | No | Pure Markdown root instructions contributed by this module. |
+| `skills/<skill-id>/` | No | Must contain `skill.json` and `SKILL.md` (pure Markdown). Optional companion files (`references/`, `scripts/`, etc.) are copied as-is. |
+| `agents/<agent-id>/` | No | Must contain `agent.json` and `PROMPT.md` (pure Markdown). |
 
-### Harness Independence
+### Harness Independence (Ports & Adapters)
 
-Modules are **100% harness-agnostic** in v1. Authors write standard Markdown artifacts once, and `agkit` delegates physical placement in the target project to the selected `Harness`:
+Modules are **100% harness-agnostic**. Each harness adapter translates the canonical domain models (`TemplateSkill`, `TemplateAgent`, `rootInstructions`) into its native format and paths:
 
-| Module artifact | OpenCode (`opencode`) | Antigravity (`antigravity` / `agy`) |
-| --- | --- | --- |
-| `ROOT.md` | `AGENTS.md` | `AGENTS.md` |
-| `skills/<name>/**` | `.opencode/skills/<name>/**` | `.agents/skills/<name>/**` |
-| `agents/<name>.md` | `.opencode/agents/<name>.md` | `.agents/agents/<name>.md` |
+| Artifact | OpenCode (`opencode`) | Antigravity (`antigravity` / `agy`) | Claude Code (`claude`) | OpenAI Codex (`codex`) | IBM Bob (`bob`) |
+| --- | --- | --- | --- | --- | --- |
+| `ROOT.md` | `AGENTS.md` | `AGENTS.md` | `CLAUDE.md` | `AGENTS.md` | `AGENTS.md` |
+| `skills/<id>/` | `.opencode/skills/<id>/` | `.agents/skills/<id>/` | `.claude/skills/<id>/` | `.agents/skills/<id>/` | `.bob/skills/<id>/` |
+| `agents/<id>/` | `.opencode/agents/<id>.md` | `.agents/agents/<id>.md` | `.claude/agents/<id>.md` | `.codex/agents/<id>.md` | `.bob/custom_modes.yaml` |
 
 ## 4. Inheritance & Composition Rules
 
 ### Dependency Resolution (`extends`)
 
-Modules form a Directed Acyclic Graph (DAG) via `extends`:
-
-1. Starting from the user-selected module(s) (one or more, e.g. `["flink"]` or `["flink", "front"]`), `agkit` resolves all transitive `extends` dependencies.
-2. Modules are ordered topologically from **least specific (ancestors)** to **most specific (selected modules)**, preserving declared order deterministically.
-3. Duplicate modules reached through multiple paths (diamond dependencies, e.g. `flink` and `front` both extending `base`) are included **once** at their earliest topological position.
-4. Any cycle in `extends` or reference to an unknown module ID is a hard validation error.
-
-For example, selecting `["flink", "front"]` where `flink -> java-base -> base` and `front -> base` resolves to:
-
-```text
-base → java-base → flink → front
-```
+1. Starting from the selected module(s), `agkit` resolves all transitive `extends` dependencies into a topological order from ancestors to most specific modules.
+2. Diamond dependencies are included once at their earliest topological position.
+3. Any cycle or unknown module ID is a hard validation error.
 
 ### File Merging & Overrides
 
-Layers are applied in resolved topological order:
-
-- **`ROOT.md` (concatenation)**:
-  - Each module's `ROOT.md` (if present, trimmed of leading/trailing blank lines) is concatenated in layer order, separated by a blank line (`\n\n`), with a single trailing newline (`\n`).
-  - No extra separators (`---`) or HTML comments are injected.
-- **`skills/<skill-name>/` (whole-directory override)**:
-  - If a more specific layer defines a skill with the same `<skill-name>`, it **replaces the entire skill directory** from earlier layers (including companion files like `references/` or `scripts/`) so stale files from parent layers never leak.
-- **`agents/<agent-name>.md` (file override)**:
-  - If a more specific layer defines an agent with the same `<agent-name>`, it replaces the earlier layer's file.
+- **`ROOT.md` (concatenation)**: Trimmed non-empty `ROOT.md` files are concatenated in layer order separated by `\n\n`, with a single trailing `\n`.
+- **`skills/<skill-id>/` (whole-directory override)**: A more specific layer replaces the entire skill definition and companion files from parent layers.
+- **`agents/<agent-id>/` (whole-agent override)**: A more specific layer replaces the entire agent definition from parent layers.
 
 ## 5. Validation Invariants
 
 `agkit` validates the template repository fail-fast before generating files:
 
-- The `modules/` directory must exist in the template repository.
-- Every subdirectory inside `modules/` must have a valid `kebab-case` name and contain a valid `module.json` conforming to the Zod schema.
-- Every module ID listed in `extends` must exist in `modules/`.
-- The `extends` graph must be acyclic.
-- Every subdirectory inside `skills/` must contain a `SKILL.md` file.
-- Non-`.md` entries inside `agents/` (such as `.gitkeep`) are ignored.
-
-## 6. Out of Scope for v1
-
-The following capabilities are intentionally excluded from v1 to keep the template format minimal and predictable, and may be added in future versions without breaking v1 repositories:
-
-- **Template variables / interpolation** (e.g. `{{project_name}}`): all v1 templates are static.
-- **Harness-specific overrides** inside modules (e.g. per-harness subdirectories).
-- **Commands (`commands/`)**: will be added once a `CommandHandler` is introduced across harnesses.
+- The `modules/` directory must exist.
+- Every module, skill, and agent directory name must be lowercase `kebab-case`.
+- Every module must contain a valid `module.json`.
+- Every skill directory must contain a valid `skill.json` and `SKILL.md`.
+- Every agent directory must contain a valid `agent.json` and `PROMPT.md`.
+- Every `extends` reference must point to an existing module, and the dependency graph must be acyclic.

@@ -16,17 +16,26 @@ describe('ModuleComposer', () => {
       skills: [
         {
           name: 'testing',
-          files: [
-            { relativePath: 'SKILL.md', content: '# Base Testing' },
-            { relativePath: 'references/legacy.md', content: 'old ref' },
-          ],
+          description: 'Base testing',
+          instructions: '# Base Testing',
+          companionFiles: [{ relativePath: 'references/legacy.md', content: 'old ref' }],
         },
         {
           name: 'git',
-          files: [{ relativePath: 'SKILL.md', content: '# Git' }],
+          description: 'Git rules',
+          instructions: '# Git',
+          companionFiles: [],
         },
       ],
-      agents: [{ name: 'reviewer', content: '# Base Reviewer' }],
+      agents: [
+        {
+          name: 'reviewer',
+          displayName: 'Base Reviewer',
+          description: 'Reviews code',
+          capabilities: ['read'],
+          prompt: '# Base Reviewer',
+        },
+      ],
     },
     {
       id: 'java-base',
@@ -46,10 +55,20 @@ describe('ModuleComposer', () => {
       skills: [
         {
           name: 'testing',
-          files: [{ relativePath: 'SKILL.md', content: '# Flink Testing' }],
+          description: 'Flink testing',
+          instructions: '# Flink Testing',
+          companionFiles: [],
         },
       ],
-      agents: [{ name: 'reviewer', content: '# Flink Reviewer' }],
+      agents: [
+        {
+          name: 'reviewer',
+          displayName: 'Flink Reviewer',
+          description: 'Reviews Flink jobs',
+          capabilities: ['read', 'skill'],
+          prompt: '# Flink Reviewer',
+        },
+      ],
     },
     {
       id: 'front',
@@ -60,10 +79,20 @@ describe('ModuleComposer', () => {
       skills: [
         {
           name: 'react',
-          files: [{ relativePath: 'SKILL.md', content: '# React' }],
+          description: 'React rules',
+          instructions: '# React',
+          companionFiles: [],
         },
       ],
-      agents: [{ name: 'ui-auditor', content: '# UI Auditor' }],
+      agents: [
+        {
+          name: 'ui-auditor',
+          displayName: 'UI Auditor',
+          description: 'Audits UI',
+          capabilities: ['read'],
+          prompt: '# UI Auditor',
+        },
+      ],
     },
   ];
 
@@ -82,20 +111,38 @@ describe('ModuleComposer', () => {
     expect(composed.skills).toEqual([
       {
         name: 'testing',
-        files: [{ relativePath: 'SKILL.md', content: '# Flink Testing' }],
+        description: 'Flink testing',
+        instructions: '# Flink Testing',
+        companionFiles: [],
       },
       {
         name: 'git',
-        files: [{ relativePath: 'SKILL.md', content: '# Git' }],
+        description: 'Git rules',
+        instructions: '# Git',
+        companionFiles: [],
       },
       {
         name: 'react',
-        files: [{ relativePath: 'SKILL.md', content: '# React' }],
+        description: 'React rules',
+        instructions: '# React',
+        companionFiles: [],
       },
     ]);
     expect(composed.agents).toEqual([
-      { name: 'reviewer', content: '# Flink Reviewer' },
-      { name: 'ui-auditor', content: '# UI Auditor' },
+      {
+        name: 'reviewer',
+        displayName: 'Flink Reviewer',
+        description: 'Reviews Flink jobs',
+        capabilities: ['read', 'skill'],
+        prompt: '# Flink Reviewer',
+      },
+      {
+        name: 'ui-auditor',
+        displayName: 'UI Auditor',
+        description: 'Audits UI',
+        capabilities: ['read'],
+        prompt: '# UI Auditor',
+      },
     ]);
   });
 

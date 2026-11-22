@@ -223,22 +223,20 @@ export class SyncCommand implements CliCommand {
     }
 
     for (const skill of composed.skills) {
-      for (const file of skill.files) {
-        const posixPath = this.toPosixPath(
-          harness.skills.relativePath(skill.name, file.relativePath),
-        );
+      for (const skillFile of harness.skills.render(skill)) {
+        const posixPath = this.toPosixPath(skillFile.relativePath);
         desired.set(posixPath, {
-          content: file.content,
-          hash: this.contentHasher.hash(file.content),
+          content: skillFile.content,
+          hash: this.contentHasher.hash(skillFile.content),
         });
       }
     }
 
-    for (const agent of composed.agents) {
-      const posixPath = this.toPosixPath(harness.agents.relativePath(agent.name));
+    for (const agentFile of harness.agents.render(composed.agents)) {
+      const posixPath = this.toPosixPath(agentFile.relativePath);
       desired.set(posixPath, {
-        content: agent.content,
-        hash: this.contentHasher.hash(agent.content),
+        content: agentFile.content,
+        hash: this.contentHasher.hash(agentFile.content),
       });
     }
 

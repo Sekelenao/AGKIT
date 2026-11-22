@@ -114,31 +114,24 @@ export class InitCommand implements CliCommand {
     }
 
     for (const skill of composed.skills) {
-      const skillPaths = await harness.skills.write(
-        options.targetDir,
-        skill.name,
-        skill.files,
-      );
-      writtenFiles.push(...skillPaths);
-      for (let index = 0; index < skill.files.length; index += 1) {
-        const skillFile = skill.files[index];
-        const writtenPath = skillPaths[index];
-        if (skillFile !== undefined && writtenPath !== undefined) {
-          managedFiles[this.toPosixPath(writtenPath)] = this.contentHasher.hash(
-            skillFile.content,
-          );
-        }
+      const writtenSkills = await harness.skills.write(options.targetDir, skill);
+      for (const skillFile of writtenSkills) {
+        writtenFiles.push(skillFile.relativePath);
+        managedFiles[this.toPosixPath(skillFile.relativePath)] = this.contentHasher.hash(
+          skillFile.content,
+        );
       }
     }
 
-    for (const agent of composed.agents) {
-      const agentPath = await harness.agents.write(
-        options.targetDir,
-        agent.name,
-        agent.content,
+    const writtenAgents = await harness.agents.writeAll(
+      options.targetDir,
+      composed.agents,
+    );
+    for (const agentFile of writtenAgents) {
+      writtenFiles.push(agentFile.relativePath);
+      managedFiles[this.toPosixPath(agentFile.relativePath)] = this.contentHasher.hash(
+        agentFile.content,
       );
-      writtenFiles.push(agentPath);
-      managedFiles[this.toPosixPath(agentPath)] = this.contentHasher.hash(agent.content);
     }
 
     const manifestFile = await this.manifestStore.save(options.targetDir, {

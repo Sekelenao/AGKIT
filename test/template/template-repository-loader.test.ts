@@ -23,7 +23,7 @@ describe('TemplateRepositoryLoader', () => {
     await rm(repoDir, { recursive: true, force: true });
   });
 
-  it('discovers modules with ROOT.md, skills with companion files, and agents sorted by ID', async () => {
+  it('discovers modules with ROOT.md, JSON+MD skills with companion files, and JSON+MD agents sorted by ID', async () => {
     await writeRepoFile(
       repoDir,
       join('modules', 'base', 'module.json'),
@@ -33,6 +33,11 @@ describe('TemplateRepositoryLoader', () => {
       }),
     );
     await writeRepoFile(repoDir, join('modules', 'base', 'ROOT.md'), '# Base Guide\n');
+    await writeRepoFile(
+      repoDir,
+      join('modules', 'base', 'skills', 'git', 'skill.json'),
+      JSON.stringify({ description: 'Git commit conventions' }),
+    );
     await writeRepoFile(
       repoDir,
       join('modules', 'base', 'skills', 'git', 'SKILL.md'),
@@ -45,7 +50,16 @@ describe('TemplateRepositoryLoader', () => {
     );
     await writeRepoFile(
       repoDir,
-      join('modules', 'base', 'agents', 'reviewer.md'),
+      join('modules', 'base', 'agents', 'reviewer', 'agent.json'),
+      JSON.stringify({
+        display_name: 'Code Reviewer',
+        description: 'Reviews pull requests',
+        capabilities: ['read', 'skill'],
+      }),
+    );
+    await writeRepoFile(
+      repoDir,
+      join('modules', 'base', 'agents', 'reviewer', 'PROMPT.md'),
       '# Reviewer\n',
     );
 
@@ -71,13 +85,22 @@ describe('TemplateRepositoryLoader', () => {
         skills: [
           {
             name: 'git',
-            files: [
+            description: 'Git commit conventions',
+            instructions: '# Git Skill\n',
+            companionFiles: [
               { relativePath: 'references/examples.md', content: '# Examples\n' },
-              { relativePath: 'SKILL.md', content: '# Git Skill\n' },
             ],
           },
         ],
-        agents: [{ name: 'reviewer', content: '# Reviewer\n' }],
+        agents: [
+          {
+            name: 'reviewer',
+            displayName: 'Code Reviewer',
+            description: 'Reviews pull requests',
+            capabilities: ['read', 'skill'],
+            prompt: '# Reviewer\n',
+          },
+        ],
       },
       {
         id: 'flink',
@@ -126,7 +149,7 @@ describe('TemplateRepositoryLoader', () => {
     await expect(loader.loadAll(repoDir)).rejects.toThrow(TemplateRepositoryError);
   });
 
-  it('throws TemplateRepositoryError when a skill directory is missing SKILL.md', async () => {
+  it('throws TemplateRepositoryError when a skill directory is missing skill.json or SKILL.md', async () => {
     await writeRepoFile(
       repoDir,
       join('modules', 'base', 'module.json'),
@@ -134,25 +157,52 @@ describe('TemplateRepositoryLoader', () => {
     );
     await writeRepoFile(
       repoDir,
-      join('modules', 'base', 'skills', 'broken', 'notes.md'),
-      '# Not SKILL.md\n',
+      join('modules', 'base', 'skills', 'broken', 'SKILL.md'),
+      '# Missing skill.json\n',
     );
+    await expect(loader.loadAll(repoDir)).rejects.toThrow(TemplateRepositoryError);
 
+    await writeRepoFile(
+      repoDir,
+      join('modules', 'base', 'skills', 'broken', 'skill.json'),
+      JSON.stringify({ description: 'Broken skill' }),
+    );
+    await rm(join(repoDir, 'modules', 'base', 'skills', 'broken', 'SKILL.md'));
     await expect(loader.loadAll(repoDir)).rejects.toThrow(TemplateRepositoryError);
   });
 
-  it('ignores non-markdown entries inside agents/', async () => {
+  it('throws TemplateRepositoryError when an agent directory has invalid capabilities or missing PROMPT.md', async () => {
     await writeRepoFile(
       repoDir,
       join('modules', 'base', 'module.json'),
       JSON.stringify({ display_name: 'Base', description: 'Base' }),
     );
-    await writeRepoFile(repoDir, join('modules', 'base', 'agents', '.gitkeep'), '');
-    await writeRepoFile(repoDir, join('modules', 'base', 'agents', 'reviewer.md'), '# Reviewer\n');
+    await writeRepoFile(
+      repoDir,
+      join('modules', 'base', 'agents', 'reviewer', 'agent.json'),
+      JSON.stringify({
+        display_name: 'Reviewer',
+        description: 'Reviews code',
+        capabilities: ['invalid-capability'],
+      }),
+    );
+    await writeRepoFile(
+      repoDir,
+      join('modules', 'base', 'agents', 'reviewer', 'PROMPT.md'),
+      '# Reviewer\n',
+    );
+    await expect(loader.loadAll(repoDir)).rejects.toThrow(TemplateRepositoryError);
 
-    const modules = await loader.loadAll(repoDir);
-
-    expect(modules[0]?.agents).toEqual([{ name: 'reviewer', content: '# Reviewer\n' }]);
+    await writeRepoFile(
+      repoDir,
+      join('modules', 'base', 'agents', 'reviewer', 'agent.json'),
+      JSON.stringify({
+        display_name: 'Reviewer',
+        description: 'Reviews code',
+      }),
+    );
+    await rm(join(repoDir, 'modules', 'base', 'agents', 'reviewer', 'PROMPT.md'));
+    await expect(loader.loadAll(repoDir)).rejects.toThrow(TemplateRepositoryError);
   });
 
   it('throws TemplateRepositoryError when extends references an unknown module', async () => {
