@@ -17,6 +17,20 @@ describe('OutputFormatter', () => {
     expect(lines.join('\n')).not.toContain('\x1b[');
   });
 
+  it('formats new template repository summaries with created file markers', () => {
+    const formatter = new OutputFormatter(false);
+    const lines = formatter.formatNewSummary({
+      harnessName: 'opencode',
+      writtenFiles: ['README.md', 'modules/example/module.json'],
+    });
+
+    expect(lines).toEqual([
+      '◇  Created template repository (2 files)',
+      '   +  README.md',
+      '   +  modules/example/module.json',
+    ]);
+  });
+
   it('formats sync summaries for up-to-date and mixed file change states', () => {
     const formatter = new OutputFormatter(false);
 

@@ -1,5 +1,6 @@
 import type { ConfigResult } from '../command/config/config-command.js';
 import type { InitResult } from '../command/init/init-command.js';
+import type { NewResult } from '../command/new/new-command.js';
 import type { ResetResult } from '../command/reset/reset-command.js';
 import type { SyncResult } from '../command/sync/sync-command.js';
 import type { TemplateModule } from '../template/template-module.js';
@@ -21,6 +22,22 @@ export class OutputFormatter {
     const noun = count === 1 ? 'file' : 'files';
     const lines: string[] = [
       `${this.theme.success(THEME_SYMBOLS.done)}  ${this.theme.brightBold(`Initialized ${count} managed ${noun}`)}`,
+    ];
+
+    for (const file of result.writtenFiles) {
+      lines.push(
+        `   ${this.theme.successBold(THEME_SYMBOLS.created)}  ${this.theme.bright(file)}`,
+      );
+    }
+
+    return lines;
+  }
+
+  formatNewSummary(result: NewResult): readonly string[] {
+    const count = result.writtenFiles.length;
+    const noun = count === 1 ? 'file' : 'files';
+    const lines: string[] = [
+      `${this.theme.success(THEME_SYMBOLS.done)}  ${this.theme.brightBold(`Created template repository (${count} ${noun})`)}`,
     ];
 
     for (const file of result.writtenFiles) {

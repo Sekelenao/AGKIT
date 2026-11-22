@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ConfigCommand } from '../../src/command/config/config-command.js';
 import { InitCommand } from '../../src/command/init/init-command.js';
 import { ListCommand } from '../../src/command/list/list-command.js';
-import { SpecCommand } from '../../src/command/spec/spec-command.js';
+import { NewCommand } from '../../src/command/new/new-command.js';
 import { type ConflictResolution, SyncCommand } from '../../src/command/sync/sync-command.js';
 import { AgkitPaths } from '../../src/config/agkit-paths.js';
 import { UserConfigStore } from '../../src/config/user-config-store.js';
@@ -18,15 +18,10 @@ import { InteractiveRunner } from '../../src/interactive/interactive-runner.js';
 import { ContentHasher } from '../../src/manifest/content-hasher.js';
 import { ProjectManifestStore } from '../../src/manifest/project-manifest-store.js';
 import { PromptCancelledError } from '../../src/prompt/prompt-cancelled-error.js';
-import type {
-  DocumentViewOptions,
-  PromptChoice,
-  PromptService,
-} from '../../src/prompt/prompt-service.js';
+import type { PromptChoice, PromptService } from '../../src/prompt/prompt-service.js';
 import { ModuleComposer } from '../../src/template/module-composer.js';
 import { TemplateRepositoryLoader } from '../../src/template/template-repository-loader.js';
 import { AlternateScreen } from '../../src/ui/alternate-screen.js';
-import { DocumentViewer } from '../../src/ui/document-viewer.js';
 import { OutputFormatter } from '../../src/ui/output-formatter.js';
 
 async function createLocalRemoteRepo(baseDir: string): Promise<string> {
@@ -149,9 +144,6 @@ describe('InteractiveRunner', () => {
       async resolveConflict(): Promise<ConflictResolution> {
         throw new Error('resolveConflict should not be called');
       },
-      async viewDocument(): Promise<void> {
-        throw new Error('viewDocument should not be called');
-      },
     };
 
     const runner = new InteractiveRunner(
@@ -171,10 +163,10 @@ describe('InteractiveRunner', () => {
       git_repository_url: remoteRepoUrl,
     });
     expect(capturedActions.map((c) => c.label)).toEqual([
-      'Initialize a project',
-      'Synchronize templates',
-      'Configure template repository',
-      'View template specification',
+      'Apply templates to this project',
+      'Update templates in this project',
+      'Create a template repository',
+      'Configuration',
       'Exit',
     ]);
     expect(capturedModules.map((c) => c.value)).toEqual(['base']);
@@ -218,9 +210,6 @@ describe('InteractiveRunner', () => {
       },
       async resolveConflict(): Promise<ConflictResolution> {
         throw new Error('resolveConflict should not be called');
-      },
-      async viewDocument(): Promise<void> {
-        throw new Error('viewDocument should not be called');
       },
     };
 
@@ -278,9 +267,6 @@ describe('InteractiveRunner', () => {
       async resolveConflict(): Promise<ConflictResolution> {
         throw new Error('resolveConflict should not be called');
       },
-      async viewDocument(): Promise<void> {
-        throw new Error('viewDocument should not be called');
-      },
     };
 
     const outputFormatter = new OutputFormatter(false);
@@ -293,8 +279,7 @@ describe('InteractiveRunner', () => {
       initCommand,
       syncCommand,
       outputFormatter,
-      new SpecCommand(),
-      new DocumentViewer(stubPrompt, outputFormatter),
+      new NewCommand(harnessRegistry, outputFormatter),
       undefined,
       screen,
     );
@@ -306,15 +291,13 @@ describe('InteractiveRunner', () => {
     expect(writtenChunks.join('')).toContain('.agkit.json');
   });
 
-  it('opens the template specification inside the document viewer without exiting the session', async () => {
+  it('scaffolds a new template repository for the selected harness without exiting the session', async () => {
     await configStore.save({ git_repository_url: remoteRepoUrl });
 
-    const specFilePath = join(tempDir, 'spec.md');
-    await writeFile(specFilePath, '# Template Spec\n\nLine two\n', 'utf8');
+    const scaffoldDir = join(tempDir, 'new-template-repo');
+    await mkdir(scaffoldDir, { recursive: true });
 
-    const queuedActions = ['spec', 'exit'];
-    const viewedDocs: DocumentViewOptions[] = [];
-
+    const queuedActions = ['new', 'exit'];
     const stubPrompt: PromptService = {
       async inputRepoUrl(): Promise<string> {
         throw new Error('inputRepoUrl should not be called');
@@ -329,13 +312,10 @@ describe('InteractiveRunner', () => {
         throw new Error('selectModules should not be called');
       },
       async selectHarness(): Promise<string> {
-        throw new Error('selectHarness should not be called');
+        return 'opencode';
       },
       async resolveConflict(): Promise<ConflictResolution> {
         throw new Error('resolveConflict should not be called');
-      },
-      async viewDocument(options: DocumentViewOptions): Promise<void> {
-        viewedDocs.push(options);
       },
     };
 
@@ -349,20 +329,17 @@ describe('InteractiveRunner', () => {
       initCommand,
       syncCommand,
       outputFormatter,
-      new SpecCommand(specFilePath, outputFormatter),
-      new DocumentViewer(stubPrompt, outputFormatter),
+      new NewCommand(harnessRegistry, outputFormatter),
     );
 
-    const summary = await runner.run(tempDir);
+    const summary = await runner.run(scaffoldDir);
 
-    expect(summary).toEqual([]);
-    expect(viewedDocs).toEqual([
-      {
-        title: 'Template Repository Specification',
-        subtitle: 'docs/template-repository.md',
-        lines: ['# Template Spec', '', 'Line two'],
-      },
-    ]);
+    expect(summary.join('\n')).toContain('Created template repository');
+    const skillContent = await readFile(
+      join(scaffoldDir, '.opencode', 'skills', 'agkit-template-authoring', 'SKILL.md'),
+      'utf8',
+    );
+    expect(skillContent).toContain('agkit spec');
   });
 
   it('returns to the menu when a sub-prompt is cancelled and exits cleanly on main menu cancel', async () => {
@@ -391,9 +368,6 @@ describe('InteractiveRunner', () => {
       },
       async resolveConflict(): Promise<ConflictResolution> {
         throw new Error('resolveConflict should not be called');
-      },
-      async viewDocument(): Promise<void> {
-        throw new Error('viewDocument should not be called');
       },
     };
 
@@ -454,9 +428,6 @@ describe('InteractiveRunner', () => {
       async resolveConflict(): Promise<ConflictResolution> {
         throw new Error('resolveConflict should not be called');
       },
-      async viewDocument(): Promise<void> {
-        throw new Error('viewDocument should not be called');
-      },
     };
 
     const runner = new InteractiveRunner(
@@ -500,9 +471,6 @@ describe('InteractiveRunner', () => {
       },
       async resolveConflict(): Promise<ConflictResolution> {
         throw new Error('resolveConflict should not be called');
-      },
-      async viewDocument(): Promise<void> {
-        throw new Error('viewDocument should not be called');
       },
     };
 

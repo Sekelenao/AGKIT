@@ -1,7 +1,7 @@
 import type { ConfigCommand } from '../command/config/config-command.js';
 import type { InitCommand } from '../command/init/init-command.js';
 import type { ListCommand } from '../command/list/list-command.js';
-import { SpecCommand } from '../command/spec/spec-command.js';
+import { NewCommand } from '../command/new/new-command.js';
 import type { SyncCommand } from '../command/sync/sync-command.js';
 import type { UserConfig } from '../config/user-config.js';
 import type { UserConfigStore } from '../config/user-config-store.js';
@@ -12,29 +12,28 @@ import type { PromptChoice, PromptService } from '../prompt/prompt-service.js';
 import { TemplateRepositoryError } from '../template/template-repository-error.js';
 import type { AlternateScreen } from '../ui/alternate-screen.js';
 import type { BannerRenderer } from '../ui/banner-renderer.js';
-import { DocumentViewer } from '../ui/document-viewer.js';
 import { OutputFormatter } from '../ui/output-formatter.js';
 
 const AVAILABLE_ACTIONS: readonly PromptChoice[] = [
   {
     value: 'init',
-    label: 'Initialize a project',
+    label: 'Apply templates to this project',
     description: 'Generate AI templates in the current directory',
   },
   {
     value: 'sync',
-    label: 'Synchronize templates',
+    label: 'Update templates in this project',
     description: 'Update managed files in this project from the template repository',
   },
   {
-    value: 'config',
-    label: 'Configure template repository',
-    description: 'Set or update the Git repository URL and default branch/tag',
+    value: 'new',
+    label: 'Create a template repository',
+    description: 'Scaffold a new AGKIT template repository in the current directory',
   },
   {
-    value: 'spec',
-    label: 'View template specification',
-    description: 'Browse the template repository layout and JSON schemas',
+    value: 'config',
+    label: 'Configuration',
+    description: 'Set or update the Git repository URL and default branch/tag',
   },
   {
     value: 'exit',
@@ -52,8 +51,7 @@ export class InteractiveRunner {
   private readonly initCommand: InitCommand;
   private readonly syncCommand: SyncCommand;
   private readonly outputFormatter: OutputFormatter;
-  private readonly specCommand: SpecCommand;
-  private readonly documentViewer: DocumentViewer;
+  private readonly newCommand: NewCommand;
   private readonly bannerRenderer: BannerRenderer | undefined;
   private readonly screen: AlternateScreen | undefined;
 
@@ -66,8 +64,7 @@ export class InteractiveRunner {
     initCommand: InitCommand,
     syncCommand: SyncCommand,
     outputFormatter: OutputFormatter = new OutputFormatter(false),
-    specCommand: SpecCommand = new SpecCommand(),
-    documentViewer: DocumentViewer = new DocumentViewer(promptService, outputFormatter),
+    newCommand: NewCommand = new NewCommand(harnessRegistry, outputFormatter),
     bannerRenderer?: BannerRenderer,
     screen?: AlternateScreen,
   ) {
@@ -79,8 +76,7 @@ export class InteractiveRunner {
     this.initCommand = initCommand;
     this.syncCommand = syncCommand;
     this.outputFormatter = outputFormatter;
-    this.specCommand = specCommand;
-    this.documentViewer = documentViewer;
+    this.newCommand = newCommand;
     this.bannerRenderer = bannerRenderer;
     this.screen = screen;
   }
@@ -142,6 +138,11 @@ export class InteractiveRunner {
           continue;
         }
 
+        if (action === 'new') {
+          noticeLines = await this.runNew(targetDir, summaryLines);
+          continue;
+        }
+
         if (action === 'config') {
           const configOutcome = await this.runConfiguration(
             config,
@@ -150,17 +151,6 @@ export class InteractiveRunner {
           );
           config = configOutcome.config;
           noticeLines = configOutcome.lines;
-          continue;
-        }
-
-        if (action === 'spec') {
-          this.renderFrame(config, targetDir, []);
-          const content = await this.specCommand.execute();
-          await this.documentViewer.showMarkdown(
-            'Template Repository Specification',
-            content,
-            'docs/template-repository.md',
-          );
           continue;
         }
 
@@ -243,6 +233,27 @@ export class InteractiveRunner {
       summaryLines.push(...formatted);
       return formatted;
     }
+  }
+
+  private async runNew(
+    targetDir: string,
+    summaryLines: string[],
+  ): Promise<readonly string[]> {
+    const harnessChoices: readonly PromptChoice[] = this.harnessRegistry
+      .listAll()
+      .map((harness) => ({
+        value: harness.name,
+        label: harness.displayName,
+      }));
+    const harnessName = await this.promptService.selectHarness(harnessChoices);
+    const result = await this.newCommand.execute({
+      targetDir,
+      harnessName,
+    });
+
+    const formatted = this.outputFormatter.formatNewSummary(result);
+    summaryLines.push(...formatted);
+    return formatted;
   }
 
   private async runSync(

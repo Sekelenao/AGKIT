@@ -4,6 +4,7 @@ import type { CliCommand } from './command/cli-command.js';
 import { ConfigCommand } from './command/config/config-command.js';
 import { InitCommand } from './command/init/init-command.js';
 import { ListCommand } from './command/list/list-command.js';
+import { NewCommand } from './command/new/new-command.js';
 import { ResetCommand } from './command/reset/reset-command.js';
 import { SpecCommand } from './command/spec/spec-command.js';
 import { SyncCommand } from './command/sync/sync-command.js';
@@ -26,7 +27,6 @@ import { ModuleComposer } from './template/module-composer.js';
 import { TemplateRepositoryLoader } from './template/template-repository-loader.js';
 import { AlternateScreen } from './ui/alternate-screen.js';
 import { BannerRenderer } from './ui/banner-renderer.js';
-import { DocumentViewer } from './ui/document-viewer.js';
 import { OutputFormatter } from './ui/output-formatter.js';
 import { TerminalSpinner } from './ui/terminal-spinner.js';
 
@@ -78,10 +78,10 @@ const syncCommand = new SyncCommand(
   contentHasher,
   stdoutFormatter,
 );
+const newCommand = new NewCommand(harnessRegistry, stdoutFormatter);
 const resetCommand = new ResetCommand(paths, stdoutFormatter);
 const specCommand = new SpecCommand(undefined, stdoutFormatter);
 const promptService = new InquirerPromptService();
-const documentViewer = new DocumentViewer(promptService, stdoutFormatter);
 const interactiveRunner = new InteractiveRunner(
   configStore,
   configCommand,
@@ -91,8 +91,7 @@ const interactiveRunner = new InteractiveRunner(
   initCommand,
   syncCommand,
   stdoutFormatter,
-  specCommand,
-  documentViewer,
+  newCommand,
   bannerRenderer,
   alternateScreen,
 );
@@ -101,6 +100,7 @@ const commands: readonly CliCommand[] = [
   configCommand,
   initCommand,
   listCommand,
+  newCommand,
   syncCommand,
   resetCommand,
   specCommand,
