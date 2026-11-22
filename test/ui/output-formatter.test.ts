@@ -82,4 +82,27 @@ describe('OutputFormatter', () => {
     expect(formatted).toContain('Missing config');
     expect(formatted).toContain('\x1b[38;2;239;68;68m');
   });
+
+  it('aligns markdown table columns cleanly in TTY mode', () => {
+    const formatter = new OutputFormatter(true);
+    const markdown = [
+      '| Field | Type | Required |',
+      '| --- | --- | --- |',
+      '| `display_name` | `string` | Yes |',
+      '| `extends` | `string[]` | No |',
+    ].join('\n');
+
+    const rendered = formatter.formatMarkdownDocument(markdown);
+    // Strip ANSI sequences to assert exact column alignment
+    const plainLines = rendered
+      .replace(/\x1b\[[0-9;]*m/g, '')
+      .split('\n');
+
+    expect(plainLines).toEqual([
+      '  Field        │ Type     │ Required',
+      '  ─────────────┼──────────┼─────────',
+      '  display_name │ string   │ Yes     ',
+      '  extends      │ string[] │ No      ',
+    ]);
+  });
 });

@@ -169,37 +169,120 @@ export class OutputFormatter {
       return markdown;
     }
 
+    const rawLines = markdown.split('\n');
+    const output: string[] = [];
     let inCodeBlock = false;
-    const styledLines = markdown.split('\n').map((line) => {
+    let index = 0;
+
+    while (index < rawLines.length) {
+      const line = rawLines[index] ?? '';
+
       if (line.startsWith('```')) {
         inCodeBlock = !inCodeBlock;
-        return this.theme.dim(line);
+        output.push(this.theme.dim(line));
+        index += 1;
+        continue;
       }
-      if (inCodeBlock) {
-        return this.theme.secondary(line);
-      }
-      if (line.startsWith('# ')) {
-        return this.theme.accentBold(`${THEME_SYMBOLS.brand} ${line.slice(2)}`);
-      }
-      if (line.startsWith('## ')) {
-        return this.theme.brightBold(line.slice(3));
-      }
-      if (line.startsWith('### ')) {
-        return this.theme.accent(line.slice(4));
-      }
-      if (line.startsWith('|')) {
-        return this.styleInlineCode(line);
-      }
-      if (line.startsWith('- ')) {
-        return `${this.theme.accent('·')} ${this.styleInlineCode(line.slice(2))}`;
-      }
-      return this.styleInlineCode(line);
-    });
 
-    return styledLines.join('\n');
+      if (inCodeBlock) {
+        output.push(this.theme.secondary(line));
+        index += 1;
+        continue;
+      }
+
+      if (line.trimStart().startsWith('|')) {
+        const tableLines: string[] = [];
+        while (index < rawLines.length && (rawLines[index] ?? '').trimStart().startsWith('|')) {
+          tableLines.push(rawLines[index] ?? '');
+          index += 1;
+        }
+        output.push(...this.formatMarkdownTable(tableLines));
+        continue;
+      }
+
+      if (line.startsWith('# ')) {
+        output.push(this.theme.accentBold(`${THEME_SYMBOLS.brand} ${line.slice(2)}`));
+      } else if (line.startsWith('## ')) {
+        output.push(this.theme.brightBold(line.slice(3)));
+      } else if (line.startsWith('### ')) {
+        output.push(this.theme.accent(line.slice(4)));
+      } else if (line.startsWith('- ')) {
+        output.push(`${this.theme.accent('·')} ${this.styleInlineMarkdown(line.slice(2))}`);
+      } else {
+        output.push(this.styleInlineMarkdown(line));
+      }
+
+      index += 1;
+    }
+
+    return output.join('\n');
   }
 
-  private styleInlineCode(line: string): string {
-    return line.replace(/`([^`]+)`/g, (_match, code: string) => this.theme.accent(code));
+  private formatMarkdownTable(tableLines: readonly string[]): readonly string[] {
+    const parsedRows = tableLines
+      .map((line) => this.parseTableRow(line))
+      .filter((cells) => cells.length > 0);
+
+    const dataRows = parsedRows.filter(
+      (cells) => !cells.every((cell) => /^:?-{3,}:?$/.test(cell)),
+    );
+    if (dataRows.length === 0) {
+      return tableLines;
+    }
+
+    const columnCount = Math.max(...dataRows.map((row) => row.length));
+    const columnWidths: number[] = Array.from({ length: columnCount }, () => 0);
+
+    for (const row of dataRows) {
+      for (let col = 0; col < columnCount; col += 1) {
+        const plain = this.stripInlineMarkdown(row[col] ?? '');
+        const current = columnWidths[col] ?? 0;
+        if (plain.length > current) {
+          columnWidths[col] = plain.length;
+        }
+      }
+    }
+
+    const separator = ` ${this.theme.dim('│')} `;
+    const divider = columnWidths
+      .map((width) => this.theme.dim(THEME_SYMBOLS.rule.repeat(width)))
+      .join(this.theme.dim('─┼─'));
+
+    const formatted: string[] = [];
+    for (let rowIndex = 0; rowIndex < dataRows.length; rowIndex += 1) {
+      const row = dataRows[rowIndex] ?? [];
+      const cells = columnWidths.map((width, col) => {
+        const rawCell = row[col] ?? '';
+        const visibleLength = this.stripInlineMarkdown(rawCell).length;
+        const padding = ' '.repeat(Math.max(0, width - visibleLength));
+        const styled =
+          rowIndex === 0
+            ? this.theme.brightBold(this.stripInlineMarkdown(rawCell))
+            : this.styleInlineMarkdown(rawCell);
+        return `${styled}${padding}`;
+      });
+      formatted.push(`  ${cells.join(separator)}`);
+      if (rowIndex === 0) {
+        formatted.push(`  ${divider}`);
+      }
+    }
+
+    return formatted;
+  }
+
+  private parseTableRow(line: string): readonly string[] {
+    const trimmed = line.trim();
+    const withoutEdges = trimmed.replace(/^\|/, '').replace(/\|$/, '');
+    return withoutEdges.split('|').map((cell) => cell.trim());
+  }
+
+  private stripInlineMarkdown(text: string): string {
+    return text.replace(/`([^`]+)`/g, '$1').replace(/\*\*([^*]+)\*\*/g, '$1');
+  }
+
+  private styleInlineMarkdown(line: string): string {
+    return line
+      .replace(/`([^`]+)`/g, (_match, code: string) => this.theme.accent(code))
+      .replace(/\*\*([^*]+)\*\*/g, (_match, bold: string) => this.theme.brightBold(bold));
   }
 }
