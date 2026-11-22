@@ -4,7 +4,7 @@
 
 Write your root instructions, skills, and specialized agents **once** in a central Git repository using plain JSON + Markdown, then apply and synchronize them cleanly across **OpenCode**, **Antigravity**, **Claude Code**, **OpenAI Codex**, **GitHub Copilot**, **Cursor**, and **IBM Bob** — without overwriting project-specific files.
 
-![AGKIT interactive menu](docs/assets/interactive-menu.svg)
+![AGKIT interactive menu](https://raw.githubusercontent.com/Sekelenao/AGKIT/main/docs/assets/interactive-menu.svg)
 
 ---
 
@@ -15,7 +15,7 @@ Write your root instructions, skills, and specialized agents **once** in a centr
 - **Conflict-safe `sync`**: Unmodified files update automatically; locally customized files show a colorized line diff with **Keep**, **Overwrite**, or **Timestamped Backup** (`.YYYYMMDD-HHmmss.bak`).
 - **Zero-magic composition**: No hidden inheritance graphs. Users explicitly pick the modules they want, and colliding skill or agent IDs fail fast.
 
-![AGKIT sync conflict diff preview](docs/assets/conflict-diff.svg)
+![AGKIT sync conflict diff preview](https://raw.githubusercontent.com/Sekelenao/AGKIT/main/docs/assets/conflict-diff.svg)
 
 ---
 
@@ -40,7 +40,20 @@ Write your root instructions, skills, and specialized agents **once** in a centr
 - Node.js `>= 20`
 - Git installed on `PATH` (AGKIT reuses your existing SSH keys / Git credential helpers with `GIT_TERMINAL_PROMPT=0`)
 
-### Install (from source)
+### Install
+
+```bash
+npm install -g @sekelenao/agkit-cli
+```
+
+Or run without a global install:
+
+```bash
+npx @sekelenao/agkit-cli
+```
+
+<details>
+<summary>Install from source</summary>
 
 ```bash
 git clone https://github.com/Sekelenao/AGKIT.git
@@ -49,6 +62,8 @@ npm install
 npm run build
 npm link
 ```
+
+</details>
 
 ### Interactive Mode
 
