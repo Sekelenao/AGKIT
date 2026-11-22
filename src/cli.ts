@@ -5,6 +5,7 @@ import { ConfigCommand } from './command/config/config-command.js';
 import { InitCommand } from './command/init/init-command.js';
 import { ListCommand } from './command/list/list-command.js';
 import { ResetCommand } from './command/reset/reset-command.js';
+import { SpecCommand } from './command/spec/spec-command.js';
 import { SyncCommand } from './command/sync/sync-command.js';
 import { AgkitPaths } from './config/agkit-paths.js';
 import { PackageVersionReader } from './config/package-version-reader.js';
@@ -12,6 +13,9 @@ import { UserConfigStore } from './config/user-config-store.js';
 import { CliError } from './error/cli-error.js';
 import { GitRepositoryCache } from './git/git-repository-cache.js';
 import { AntigravityHarness } from './harness/antigravity/antigravity-harness.js';
+import { BobHarness } from './harness/bob/bob-harness.js';
+import { ClaudeHarness } from './harness/claude/claude-harness.js';
+import { CodexHarness } from './harness/codex/codex-harness.js';
 import { HarnessRegistry } from './harness/harness-registry.js';
 import { OpencodeHarness } from './harness/opencode/opencode-harness.js';
 import { InteractiveRunner } from './interactive/interactive-runner.js';
@@ -42,6 +46,9 @@ const contentHasher = new ContentHasher();
 const harnessRegistry = new HarnessRegistry([
   new OpencodeHarness(),
   new AntigravityHarness(),
+  new ClaudeHarness(),
+  new CodexHarness(),
+  new BobHarness(),
 ]);
 
 const configCommand = new ConfigCommand(configStore, repositoryCache, stdoutFormatter);
@@ -71,6 +78,7 @@ const syncCommand = new SyncCommand(
   stdoutFormatter,
 );
 const resetCommand = new ResetCommand(paths, stdoutFormatter);
+const specCommand = new SpecCommand(undefined, stdoutFormatter);
 const interactiveRunner = new InteractiveRunner(
   configStore,
   configCommand,
@@ -88,6 +96,7 @@ const commands: readonly CliCommand[] = [
   listCommand,
   syncCommand,
   resetCommand,
+  specCommand,
 ];
 
 const program = new Command();

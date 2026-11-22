@@ -9,8 +9,10 @@ const LIST_RULE_WIDTH = 62;
 
 export class OutputFormatter {
   private readonly theme: UiTheme;
+  private readonly useColor: boolean;
 
   constructor(useColor = false) {
+    this.useColor = useColor;
     this.theme = new UiTheme(useColor);
   }
 
@@ -160,5 +162,44 @@ export class OutputFormatter {
 
   formatError(message: string): string {
     return `${this.theme.errorBold(`${THEME_SYMBOLS.error} ERROR`)}  ${this.theme.bright(message)}`;
+  }
+
+  formatMarkdownDocument(markdown: string): string {
+    if (!this.useColor) {
+      return markdown;
+    }
+
+    let inCodeBlock = false;
+    const styledLines = markdown.split('\n').map((line) => {
+      if (line.startsWith('```')) {
+        inCodeBlock = !inCodeBlock;
+        return this.theme.dim(line);
+      }
+      if (inCodeBlock) {
+        return this.theme.secondary(line);
+      }
+      if (line.startsWith('# ')) {
+        return this.theme.accentBold(`${THEME_SYMBOLS.brand} ${line.slice(2)}`);
+      }
+      if (line.startsWith('## ')) {
+        return this.theme.brightBold(line.slice(3));
+      }
+      if (line.startsWith('### ')) {
+        return this.theme.accent(line.slice(4));
+      }
+      if (line.startsWith('|')) {
+        return this.styleInlineCode(line);
+      }
+      if (line.startsWith('- ')) {
+        return `${this.theme.accent('·')} ${this.styleInlineCode(line.slice(2))}`;
+      }
+      return this.styleInlineCode(line);
+    });
+
+    return styledLines.join('\n');
+  }
+
+  private styleInlineCode(line: string): string {
+    return line.replace(/`([^`]+)`/g, (_match, code: string) => this.theme.accent(code));
   }
 }

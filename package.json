@@ -10,7 +10,8 @@
     "agkit": "./dist/cli.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "docs/template-repository.md"
   ],
   "scripts": {
     "build": "tsc && node -e \"import('node:fs').then(fs => fs.chmodSync('dist/cli.js', 0o755))\"",
