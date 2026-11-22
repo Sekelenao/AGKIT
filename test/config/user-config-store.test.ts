@@ -46,7 +46,9 @@ describe('UserConfigStore', () => {
   it.each([
     { git_repository_url: '' },
     { git_repository_url: '   ' },
+    { git_repository_url: '--upload-pack=evil' },
     { git_repository_url: 'git@github.com:org/templates.git', default_ref: '   ' },
+    { git_repository_url: 'git@github.com:org/templates.git', default_ref: '--bad-ref' },
   ])('rejects invalid configuration %o', async (invalid) => {
     await expect(store.save(invalid)).rejects.toThrow(InvalidConfigError);
   });

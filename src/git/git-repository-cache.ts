@@ -19,6 +19,13 @@ export class GitRepositoryCache {
   }
 
   async sync(repoUrl: string, ref?: string): Promise<string> {
+    if (repoUrl.trim().startsWith('-')) {
+      throw new GitCommandError('clone', 'Repository URL must not start with "-".');
+    }
+    if (ref !== undefined && ref.trim().startsWith('-')) {
+      throw new GitCommandError('checkout', 'Git ref must not start with "-".');
+    }
+
     const repoDir = this.paths.repoCacheDir;
     const isReusable = await this.isMatchingClone(repoDir, repoUrl);
     const statusMessage = isReusable
@@ -30,7 +37,7 @@ export class GitRepositoryCache {
         await rm(repoDir, { recursive: true, force: true });
         await mkdir(dirname(repoDir), { recursive: true });
         await this.runOperation('clone', () =>
-          this.createGit().clone(repoUrl, repoDir),
+          this.createGit().clone(repoUrl, repoDir, ['--']),
         );
       } else {
         const git = this.createGit(repoDir);

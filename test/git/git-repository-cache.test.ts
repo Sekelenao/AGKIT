@@ -144,4 +144,11 @@ describe('GitRepositoryCache', () => {
       cache.sync(join(tempDir, 'does-not-exist.git')),
     ).rejects.toThrow(GitCommandError);
   });
+
+  it('rejects repository URLs and refs starting with "-" to prevent Git option injection', async () => {
+    await expect(cache.sync('--upload-pack=evil')).rejects.toThrow(GitCommandError);
+    await expect(
+      cache.sync('https://example.com/repo.git', '--evil-ref'),
+    ).rejects.toThrow(GitCommandError);
+  });
 });

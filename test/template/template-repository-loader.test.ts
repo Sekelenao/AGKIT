@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -199,6 +199,34 @@ describe('TemplateRepositoryLoader', () => {
       }),
     );
     await rm(join(repoDir, 'modules', 'base', 'agents', 'reviewer', 'PROMPT.md'));
+    await expect(loader.loadAll(repoDir)).rejects.toThrow(TemplateRepositoryError);
+  });
+
+  it('throws TemplateRepositoryError when a module file or skill companion file is a symlink', async () => {
+    const outsideFile = join(repoDir, 'secret.txt');
+    await writeFile(outsideFile, 'secret', 'utf8');
+    await writeRepoFile(
+      repoDir,
+      join('modules', 'base', 'module.json'),
+      JSON.stringify({ display_name: 'Base', description: 'Base' }),
+    );
+    await symlink(outsideFile, join(repoDir, 'modules', 'base', 'ROOT.md'));
+
+    await expect(loader.loadAll(repoDir)).rejects.toThrow(TemplateRepositoryError);
+
+    await rm(join(repoDir, 'modules', 'base', 'ROOT.md'));
+    await writeRepoFile(
+      repoDir,
+      join('modules', 'base', 'skills', 'git', 'skill.json'),
+      JSON.stringify({ description: 'Git' }),
+    );
+    await writeRepoFile(
+      repoDir,
+      join('modules', 'base', 'skills', 'git', 'SKILL.md'),
+      '# Git\n',
+    );
+    await symlink(outsideFile, join(repoDir, 'modules', 'base', 'skills', 'git', 'leak.txt'));
+
     await expect(loader.loadAll(repoDir)).rejects.toThrow(TemplateRepositoryError);
   });
 });

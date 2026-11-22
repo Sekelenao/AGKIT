@@ -1,5 +1,5 @@
 import type { Dirent } from 'node:fs';
-import { readdir, readFile } from 'node:fs/promises';
+import { lstat, readdir, readFile } from 'node:fs/promises';
 import { join, posix } from 'node:path';
 import type { z } from 'zod';
 import {
@@ -42,6 +42,7 @@ export class TemplateRepositoryLoader {
       modulesRoot,
       `Template repository is missing required "${MODULES_DIR_NAME}/" directory at ${repoDir}.`,
     );
+    this.rejectSymlinks(entries, MODULES_DIR_NAME);
 
     const moduleDirs = entries
       .filter((entry) => entry.isDirectory())
@@ -92,6 +93,7 @@ export class TemplateRepositoryLoader {
     if (entries === undefined) {
       return [];
     }
+    this.rejectSymlinks(entries, `${moduleId}/${SKILLS_DIR_NAME}`);
 
     const skillDirs = entries
       .filter((entry) => entry.isDirectory())
@@ -148,6 +150,7 @@ export class TemplateRepositoryLoader {
     if (entries === undefined) {
       return [];
     }
+    this.rejectSymlinks(entries, `${moduleId}/${AGENTS_DIR_NAME}`);
 
     const agentDirs = entries
       .filter((entry) => entry.isDirectory())
@@ -238,6 +241,12 @@ export class TemplateRepositoryLoader {
         relativePrefix === '' ? entry.name : posix.join(relativePrefix, entry.name);
       const entryAbsolute = join(directory, entry.name);
 
+      if (entry.isSymbolicLink()) {
+        throw new TemplateRepositoryError(
+          `Symbolic links are not allowed in template repositories: "${entryRelative}".`,
+        );
+      }
+
       if (entry.isDirectory()) {
         const nested = await this.collectFilesRecursively(entryAbsolute, entryRelative);
         files.push(...nested);
@@ -275,8 +284,29 @@ export class TemplateRepositoryLoader {
     }
   }
 
+  private rejectSymlinks(entries: readonly Dirent[], scope: string): void {
+    for (const entry of entries) {
+      if (entry.isSymbolicLink()) {
+        throw new TemplateRepositoryError(
+          `Symbolic links are not allowed in template repositories: "${scope}/${entry.name}".`,
+        );
+      }
+    }
+  }
+
   private async readOptionalTextFile(filePath: string): Promise<string | undefined> {
     try {
+      const stats = await lstat(filePath);
+      if (stats.isSymbolicLink()) {
+        throw new TemplateRepositoryError(
+          `Symbolic links are not allowed in template repositories: "${filePath}".`,
+        );
+      }
+      if (!stats.isFile()) {
+        throw new TemplateRepositoryError(
+          `Expected a regular file in template repository: "${filePath}".`,
+        );
+      }
       return await readFile(filePath, 'utf8');
     } catch (error: unknown) {
       if (this.isNotFoundError(error)) {

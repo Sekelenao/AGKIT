@@ -1,10 +1,11 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { dirname, join, sep } from 'node:path';
+import { dirname, resolve, sep } from 'node:path';
 import type { Command } from 'commander';
 import type { GitRepositoryCache } from '../../git/git-repository-cache.js';
 import type { Harness } from '../../harness/harness.js';
 import type { HarnessRegistry } from '../../harness/harness-registry.js';
 import type { ContentHasher } from '../../manifest/content-hasher.js';
+import { InvalidManifestError } from '../../manifest/invalid-manifest-error.js';
 import { MissingManifestError } from '../../manifest/missing-manifest-error.js';
 import type { ProjectManifestStore } from '../../manifest/project-manifest-store.js';
 import type { ModuleComposer } from '../../template/module-composer.js';
@@ -261,7 +262,14 @@ export class SyncCommand implements CliCommand {
   }
 
   private toAbsolutePath(targetDir: string, posixPath: string): string {
-    return join(targetDir, ...posixPath.split('/'));
+    const base = resolve(targetDir);
+    const absolute = resolve(base, ...posixPath.split('/'));
+    if (absolute === base || !absolute.startsWith(`${base}${sep}`)) {
+      throw new InvalidManifestError(
+        `Unsafe managed file path "${posixPath}" escapes target directory.`,
+      );
+    }
+    return absolute;
   }
 
   private async readOptionalLocalFile(

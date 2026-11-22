@@ -82,7 +82,39 @@ describe('ProjectManifestStore & ContentHasher', () => {
       git_repository_url: 'https://example.com/repo.git',
       managed_files: { 'AGENTS.md': 'not-a-sha256' },
     },
+    {
+      harness: 'opencode',
+      modules: ['base'],
+      git_repository_url: '--upload-pack=evil',
+      managed_files: {},
+    },
+    {
+      harness: 'opencode',
+      modules: ['base'],
+      git_repository_url: 'https://example.com/repo.git',
+      ref: '--evil-ref',
+      managed_files: {},
+    },
   ])('throws InvalidManifestError on invalid manifest payload %o', async (invalid) => {
     await expect(store.save(tempDir, invalid)).rejects.toThrow(InvalidManifestError);
+  });
+
+  it.each([
+    '../outside.txt',
+    'a/../../outside.txt',
+    '/etc/passwd',
+    'C:/Windows/win.ini',
+    'dir\\file.md',
+    './AGENTS.md',
+  ])('rejects unsafe managed_files path "%s"', async (unsafePath) => {
+    const hash = hasher.hash('content');
+    await expect(
+      store.save(tempDir, {
+        harness: 'opencode',
+        modules: ['base'],
+        git_repository_url: 'https://example.com/repo.git',
+        managed_files: { [unsafePath]: hash },
+      }),
+    ).rejects.toThrow(InvalidManifestError);
   });
 });
