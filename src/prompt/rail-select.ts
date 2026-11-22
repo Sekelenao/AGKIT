@@ -9,6 +9,7 @@ import {
 } from '@inquirer/core';
 import { THEME_SYMBOLS, UiTheme } from '../ui/ui-theme.js';
 import { PROMPT_CANCELLED } from './prompt-cancelled-error.js';
+import { formatRailFooter } from './rail-footer.js';
 
 export interface RailSelectChoice<Value> {
   readonly value: Value;
@@ -106,10 +107,7 @@ export const railSelect = createPrompt(
       },
     });
 
-    const footerLine =
-      activeChoice?.description !== undefined
-        ? `${theme.dim(THEME_SYMBOLS.end)}  ${theme.muted(activeChoice.description)}`
-        : theme.dim(THEME_SYMBOLS.end);
+    const footerLines = formatRailFooter(theme, activeChoice?.description, 'muted');
 
     const helpLine = `   ${theme.dim(`↑↓ navigate  ·  enter confirm  ·  esc ${cancelLabel}`)}`;
 
@@ -124,7 +122,7 @@ export const railSelect = createPrompt(
       ...previewSection,
       page,
       rail,
-      footerLine,
+      ...footerLines,
       '',
       helpLine,
     ];

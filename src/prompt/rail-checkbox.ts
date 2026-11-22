@@ -10,6 +10,7 @@ import {
 } from '@inquirer/core';
 import { THEME_SYMBOLS, UiTheme } from '../ui/ui-theme.js';
 import { PROMPT_CANCELLED } from './prompt-cancelled-error.js';
+import { formatRailFooter } from './rail-footer.js';
 
 export interface RailCheckboxChoice<Value> {
   readonly value: Value;
@@ -126,12 +127,10 @@ export const railCheckbox = createPrompt(
       },
     });
 
-    const footerLine =
+    const footerLines =
       errorMessage !== undefined
-        ? `${theme.error(THEME_SYMBOLS.end)}  ${theme.error(errorMessage)}`
-        : activeChoice?.description !== undefined
-          ? `${theme.dim(THEME_SYMBOLS.end)}  ${theme.muted(activeChoice.description)}`
-          : theme.dim(THEME_SYMBOLS.end);
+        ? formatRailFooter(theme, errorMessage, 'error')
+        : formatRailFooter(theme, activeChoice?.description, 'muted');
 
     const helpLine = `   ${theme.dim(`↑↓ navigate  ·  space select  ·  a all  ·  enter confirm  ·  esc ${cancelLabel}`)}`;
 
@@ -140,7 +139,7 @@ export const railCheckbox = createPrompt(
       rail,
       page,
       rail,
-      footerLine,
+      ...footerLines,
       '',
       helpLine,
     ];
