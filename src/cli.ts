@@ -26,6 +26,7 @@ import { ModuleComposer } from './template/module-composer.js';
 import { TemplateRepositoryLoader } from './template/template-repository-loader.js';
 import { AlternateScreen } from './ui/alternate-screen.js';
 import { BannerRenderer } from './ui/banner-renderer.js';
+import { DocumentViewer } from './ui/document-viewer.js';
 import { OutputFormatter } from './ui/output-formatter.js';
 import { TerminalSpinner } from './ui/terminal-spinner.js';
 
@@ -79,16 +80,21 @@ const syncCommand = new SyncCommand(
 );
 const resetCommand = new ResetCommand(paths, stdoutFormatter);
 const specCommand = new SpecCommand(undefined, stdoutFormatter);
+const promptService = new InquirerPromptService();
+const documentViewer = new DocumentViewer(promptService, stdoutFormatter);
 const interactiveRunner = new InteractiveRunner(
   configStore,
   configCommand,
   listCommand,
   harnessRegistry,
-  new InquirerPromptService(),
+  promptService,
   initCommand,
   syncCommand,
   stdoutFormatter,
   specCommand,
+  documentViewer,
+  bannerRenderer,
+  alternateScreen,
 );
 
 const commands: readonly CliCommand[] = [
@@ -107,16 +113,8 @@ program
   .description('CLI for managing enterprise AI harness templates')
   .version(cliVersion)
   .action(async (): Promise<void> => {
-    const existingConfig = await configStore.load();
     const cwd = process.cwd();
-    const summaryLines = await alternateScreen.run(async () => {
-      bannerRenderer.render({
-        repoUrl: existingConfig?.git_repository_url,
-        ref: existingConfig?.default_ref,
-        cwd,
-      });
-      return interactiveRunner.run(cwd);
-    });
+    const summaryLines = await alternateScreen.run(() => interactiveRunner.run(cwd));
     for (const line of summaryLines) {
       console.log(line);
     }

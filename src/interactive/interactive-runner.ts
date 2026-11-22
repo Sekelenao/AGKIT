@@ -5,9 +5,14 @@ import { SpecCommand } from '../command/spec/spec-command.js';
 import type { SyncCommand } from '../command/sync/sync-command.js';
 import type { UserConfig } from '../config/user-config.js';
 import type { UserConfigStore } from '../config/user-config-store.js';
+import { CliError } from '../error/cli-error.js';
 import type { HarnessRegistry } from '../harness/harness-registry.js';
+import { PromptCancelledError } from '../prompt/prompt-cancelled-error.js';
 import type { PromptChoice, PromptService } from '../prompt/prompt-service.js';
 import { TemplateRepositoryError } from '../template/template-repository-error.js';
+import type { AlternateScreen } from '../ui/alternate-screen.js';
+import type { BannerRenderer } from '../ui/banner-renderer.js';
+import { DocumentViewer } from '../ui/document-viewer.js';
 import { OutputFormatter } from '../ui/output-formatter.js';
 
 const AVAILABLE_ACTIONS: readonly PromptChoice[] = [
@@ -29,7 +34,7 @@ const AVAILABLE_ACTIONS: readonly PromptChoice[] = [
   {
     value: 'spec',
     label: 'View template specification',
-    description: 'Print the template repository layout and JSON schemas',
+    description: 'Browse the template repository layout and JSON schemas',
   },
   {
     value: 'exit',
@@ -48,6 +53,9 @@ export class InteractiveRunner {
   private readonly syncCommand: SyncCommand;
   private readonly outputFormatter: OutputFormatter;
   private readonly specCommand: SpecCommand;
+  private readonly documentViewer: DocumentViewer;
+  private readonly bannerRenderer: BannerRenderer | undefined;
+  private readonly screen: AlternateScreen | undefined;
 
   constructor(
     configStore: UserConfigStore,
@@ -59,6 +67,9 @@ export class InteractiveRunner {
     syncCommand: SyncCommand,
     outputFormatter: OutputFormatter = new OutputFormatter(false),
     specCommand: SpecCommand = new SpecCommand(),
+    documentViewer: DocumentViewer = new DocumentViewer(promptService, outputFormatter),
+    bannerRenderer?: BannerRenderer,
+    screen?: AlternateScreen,
   ) {
     this.configStore = configStore;
     this.configCommand = configCommand;
@@ -69,82 +80,167 @@ export class InteractiveRunner {
     this.syncCommand = syncCommand;
     this.outputFormatter = outputFormatter;
     this.specCommand = specCommand;
+    this.documentViewer = documentViewer;
+    this.bannerRenderer = bannerRenderer;
+    this.screen = screen;
   }
 
   async run(targetDir: string): Promise<readonly string[]> {
     const summaryLines: string[] = [];
+    let noticeLines: readonly string[] = [];
     let config = await this.configStore.load();
 
-    if (config === undefined) {
-      config = await this.runConfiguration(undefined, summaryLines);
+    while (config === undefined) {
+      this.renderFrame(undefined, targetDir, noticeLines);
+      try {
+        const configOutcome = await this.runConfiguration(undefined, summaryLines);
+        config = configOutcome.config;
+        noticeLines = configOutcome.lines;
+      } catch (error: unknown) {
+        if (error instanceof PromptCancelledError) {
+          return summaryLines;
+        }
+        if (error instanceof CliError) {
+          noticeLines = [this.outputFormatter.formatError(error.message)];
+          continue;
+        }
+        throw error;
+      }
     }
 
-    const action = await this.promptService.selectAction(AVAILABLE_ACTIONS);
+    while (true) {
+      this.renderFrame(config, targetDir, noticeLines);
 
-    if (action === 'init') {
-      const { modules } = await this.listCommand.execute();
-      if (modules.length === 0) {
-        throw new TemplateRepositoryError(
-          'No template modules found in the configured repository.',
-        );
+      let action: string;
+      try {
+        action = await this.promptService.selectAction(AVAILABLE_ACTIONS);
+      } catch (error: unknown) {
+        if (error instanceof PromptCancelledError) {
+          return summaryLines;
+        }
+        throw error;
       }
 
-      const moduleChoices: readonly PromptChoice[] = modules.map((mod) => ({
-        value: mod.id,
-        label: `${mod.displayName} (${mod.id})`,
-        description: mod.description,
+      if (action === 'exit') {
+        return summaryLines;
+      }
+
+      noticeLines = [];
+
+      try {
+        if (action === 'init') {
+          noticeLines = await this.runInit(targetDir, summaryLines);
+          continue;
+        }
+
+        if (action === 'sync') {
+          noticeLines = await this.runSync(targetDir, summaryLines);
+          continue;
+        }
+
+        if (action === 'config') {
+          const configOutcome = await this.runConfiguration(config, summaryLines);
+          config = configOutcome.config;
+          noticeLines = configOutcome.lines;
+          continue;
+        }
+
+        if (action === 'spec') {
+          this.renderFrame(config, targetDir, []);
+          const content = await this.specCommand.execute();
+          await this.documentViewer.showMarkdown(
+            'Template Repository Specification',
+            content,
+            'docs/template-repository.md',
+          );
+          continue;
+        }
+
+        throw new Error(`Unsupported interactive action "${action}".`);
+      } catch (error: unknown) {
+        if (error instanceof PromptCancelledError) {
+          noticeLines = [];
+          continue;
+        }
+        if (error instanceof CliError) {
+          noticeLines = [this.outputFormatter.formatError(error.message)];
+          continue;
+        }
+        throw error;
+      }
+    }
+  }
+
+  private renderFrame(
+    config: UserConfig | undefined,
+    targetDir: string,
+    noticeLines: readonly string[],
+  ): void {
+    this.screen?.clear();
+    this.bannerRenderer?.render({
+      repoUrl: config?.git_repository_url,
+      ref: config?.default_ref,
+      cwd: targetDir,
+    });
+    if (noticeLines.length > 0) {
+      this.screen?.writeLines(noticeLines);
+    }
+  }
+
+  private async runInit(
+    targetDir: string,
+    summaryLines: string[],
+  ): Promise<readonly string[]> {
+    const { modules } = await this.listCommand.execute();
+    if (modules.length === 0) {
+      throw new TemplateRepositoryError(
+        'No template modules found in the configured repository.',
+      );
+    }
+
+    const moduleChoices: readonly PromptChoice[] = modules.map((mod) => ({
+      value: mod.id,
+      label: `${mod.displayName} (${mod.id})`,
+      description: mod.description,
+    }));
+    const moduleIds = await this.promptService.selectModules(moduleChoices);
+
+    const harnessChoices: readonly PromptChoice[] = this.harnessRegistry
+      .listAll()
+      .map((harness) => ({
+        value: harness.name,
+        label: harness.displayName,
       }));
-      const moduleIds = await this.promptService.selectModules(moduleChoices);
+    const harnessName = await this.promptService.selectHarness(harnessChoices);
+    const result = await this.initCommand.execute({
+      targetDir,
+      harnessName,
+      moduleIds,
+    });
 
-      const harnessChoices: readonly PromptChoice[] = this.harnessRegistry
-        .listAll()
-        .map((harness) => ({
-          value: harness.name,
-          label: harness.displayName,
-        }));
-      const harnessName = await this.promptService.selectHarness(harnessChoices);
-      const result = await this.initCommand.execute({
-        targetDir,
-        harnessName,
-        moduleIds,
-      });
+    const formatted = this.outputFormatter.formatInitSummary(result);
+    summaryLines.push(...formatted);
+    return formatted;
+  }
 
-      summaryLines.push(...this.outputFormatter.formatInitSummary(result));
-      return summaryLines;
-    }
+  private async runSync(
+    targetDir: string,
+    summaryLines: string[],
+  ): Promise<readonly string[]> {
+    const result = await this.syncCommand.execute({
+      targetDir,
+      resolveConflict: (filePath) => this.promptService.resolveConflict(filePath),
+    });
 
-    if (action === 'sync') {
-      const result = await this.syncCommand.execute({
-        targetDir,
-        resolveConflict: (filePath) => this.promptService.resolveConflict(filePath),
-      });
-
-      summaryLines.push(...this.outputFormatter.formatSyncSummary(result));
-      return summaryLines;
-    }
-
-    if (action === 'config') {
-      await this.runConfiguration(config, summaryLines);
-      return summaryLines;
-    }
-
-    if (action === 'spec') {
-      const content = await this.specCommand.execute();
-      summaryLines.push(this.outputFormatter.formatMarkdownDocument(content).trimEnd());
-      return summaryLines;
-    }
-
-    if (action === 'exit') {
-      return summaryLines;
-    }
-
-    throw new Error(`Unsupported interactive action "${action}".`);
+    const formatted = this.outputFormatter.formatSyncSummary(result);
+    summaryLines.push(...formatted);
+    return formatted;
   }
 
   private async runConfiguration(
     currentConfig: UserConfig | undefined,
     summaryLines: string[],
-  ): Promise<UserConfig> {
+  ): Promise<{ readonly config: UserConfig; readonly lines: readonly string[] }> {
     const gitRepositoryUrl = await this.promptService.inputRepoUrl(
       currentConfig?.git_repository_url,
     );
@@ -157,7 +253,11 @@ export class InteractiveRunner {
       default_ref: defaultRef,
     });
 
-    summaryLines.push(...this.outputFormatter.formatConfigSummary(result));
-    return result.config;
+    const formatted = this.outputFormatter.formatConfigSummary(result);
+    summaryLines.push(...formatted);
+    return {
+      config: result.config,
+      lines: formatted,
+    };
   }
 }

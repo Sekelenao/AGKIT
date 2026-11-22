@@ -52,4 +52,19 @@ describe('AlternateScreen', () => {
     expect(result).toBe(123);
     expect(chunks).toEqual([]);
   });
+
+  it('clears the screen only in a TTY and writes formatted lines', () => {
+    const tty = createFakeStream(true);
+    const ttyScreen = new AlternateScreen(tty.stream);
+    ttyScreen.clear();
+    ttyScreen.writeLines(['Line 1', 'Line 2']);
+    ttyScreen.writeLines([]);
+
+    expect(tty.chunks).toEqual(['\x1b[2J\x1b[H', 'Line 1\nLine 2\n\n']);
+
+    const nonTty = createFakeStream(false);
+    const nonTtyScreen = new AlternateScreen(nonTty.stream);
+    nonTtyScreen.clear();
+    expect(nonTty.chunks).toEqual([]);
+  });
 });

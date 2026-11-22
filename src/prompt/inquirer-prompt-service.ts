@@ -3,8 +3,9 @@ import { input } from '@inquirer/prompts';
 import type { ConflictResolution } from '../command/sync/sync-command.js';
 import { THEME_SYMBOLS, UiTheme } from '../ui/ui-theme.js';
 import { PromptCancelledError } from './prompt-cancelled-error.js';
-import type { PromptChoice, PromptService } from './prompt-service.js';
+import type { DocumentViewOptions, PromptChoice, PromptService } from './prompt-service.js';
 import { railCheckbox } from './rail-checkbox.js';
+import { railDocumentPager } from './rail-document-pager.js';
 import { railSelect } from './rail-select.js';
 
 const theme = new UiTheme(true);
@@ -99,6 +100,16 @@ export class InquirerPromptService implements PromptService {
     );
     const trimmed = value.trim();
     return trimmed.length > 0 ? trimmed : undefined;
+  }
+
+  async viewDocument(options: DocumentViewOptions): Promise<void> {
+    await this.wrapCancel(() =>
+      railDocumentPager({
+        title: options.title,
+        subtitle: options.subtitle,
+        lines: options.lines,
+      }),
+    );
   }
 
   private async wrapCancel<T>(prompt: () => Promise<T>): Promise<T> {

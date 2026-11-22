@@ -1,6 +1,7 @@
 import type { TerminalOutputStream } from './terminal-spinner.js';
 
 const ENTER_ALTERNATE_SCREEN = '\x1b[?1049h\x1b[2J\x1b[H';
+const CLEAR_SCREEN = '\x1b[2J\x1b[H';
 const EXIT_ALTERNATE_SCREEN = '\x1b[?1049l';
 
 export class AlternateScreen {
@@ -8,6 +9,19 @@ export class AlternateScreen {
 
   constructor(stream: TerminalOutputStream = process.stdout) {
     this.stream = stream;
+  }
+
+  clear(): void {
+    if (this.stream.isTTY === true) {
+      this.stream.write(CLEAR_SCREEN);
+    }
+  }
+
+  writeLines(lines: readonly string[]): void {
+    if (lines.length === 0) {
+      return;
+    }
+    this.stream.write(`${lines.join('\n')}\n\n`);
   }
 
   async run<T>(task: () => Promise<T>): Promise<T> {

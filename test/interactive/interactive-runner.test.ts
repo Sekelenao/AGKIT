@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ConfigCommand } from '../../src/command/config/config-command.js';
 import { InitCommand } from '../../src/command/init/init-command.js';
 import { ListCommand } from '../../src/command/list/list-command.js';
+import { SpecCommand } from '../../src/command/spec/spec-command.js';
 import { type ConflictResolution, SyncCommand } from '../../src/command/sync/sync-command.js';
 import { AgkitPaths } from '../../src/config/agkit-paths.js';
 import { UserConfigStore } from '../../src/config/user-config-store.js';
@@ -16,9 +17,17 @@ import { OpencodeHarness } from '../../src/harness/opencode/opencode-harness.js'
 import { InteractiveRunner } from '../../src/interactive/interactive-runner.js';
 import { ContentHasher } from '../../src/manifest/content-hasher.js';
 import { ProjectManifestStore } from '../../src/manifest/project-manifest-store.js';
-import type { PromptChoice, PromptService } from '../../src/prompt/prompt-service.js';
+import { PromptCancelledError } from '../../src/prompt/prompt-cancelled-error.js';
+import type {
+  DocumentViewOptions,
+  PromptChoice,
+  PromptService,
+} from '../../src/prompt/prompt-service.js';
 import { ModuleComposer } from '../../src/template/module-composer.js';
 import { TemplateRepositoryLoader } from '../../src/template/template-repository-loader.js';
+import { AlternateScreen } from '../../src/ui/alternate-screen.js';
+import { DocumentViewer } from '../../src/ui/document-viewer.js';
+import { OutputFormatter } from '../../src/ui/output-formatter.js';
 
 async function createLocalRemoteRepo(baseDir: string): Promise<string> {
   const remoteDir = join(baseDir, 'templates.git');
@@ -107,7 +116,7 @@ describe('InteractiveRunner', () => {
     await rm(tempDir, { recursive: true, force: true });
   });
 
-  it('runs first-time configuration when unconfigured, then shows menu and executes init', async () => {
+  it('runs first-time configuration when unconfigured, executes init, and stays in menu until exit', async () => {
     const projectDir = join(tempDir, 'project');
     await mkdir(projectDir, { recursive: true });
 
@@ -115,6 +124,7 @@ describe('InteractiveRunner', () => {
     let capturedModules: readonly PromptChoice[] = [];
     let capturedHarnesses: readonly PromptChoice[] = [];
     let repoPromptCount = 0;
+    const queuedActions = ['init', 'exit'];
 
     const stubPrompt: PromptService = {
       async inputRepoUrl(): Promise<string> {
@@ -126,7 +136,7 @@ describe('InteractiveRunner', () => {
       },
       async selectAction(choices: readonly PromptChoice[]): Promise<string> {
         capturedActions = choices;
-        return 'init';
+        return queuedActions.shift() ?? 'exit';
       },
       async selectModules(choices: readonly PromptChoice[]): Promise<readonly string[]> {
         capturedModules = choices;
@@ -138,6 +148,9 @@ describe('InteractiveRunner', () => {
       },
       async resolveConflict(): Promise<ConflictResolution> {
         throw new Error('resolveConflict should not be called');
+      },
+      async viewDocument(): Promise<void> {
+        throw new Error('viewDocument should not be called');
       },
     };
 
@@ -183,6 +196,7 @@ describe('InteractiveRunner', () => {
 
     let receivedCurrentUrl: string | undefined;
     let receivedCurrentRef: string | undefined;
+    const queuedActions = ['config', 'exit'];
 
     const stubPrompt: PromptService = {
       async inputRepoUrl(currentUrl?: string): Promise<string> {
@@ -194,7 +208,7 @@ describe('InteractiveRunner', () => {
         return undefined;
       },
       async selectAction(): Promise<string> {
-        return 'config';
+        return queuedActions.shift() ?? 'exit';
       },
       async selectModules(): Promise<readonly string[]> {
         throw new Error('selectModules should not be called');
@@ -204,6 +218,9 @@ describe('InteractiveRunner', () => {
       },
       async resolveConflict(): Promise<ConflictResolution> {
         throw new Error('resolveConflict should not be called');
+      },
+      async viewDocument(): Promise<void> {
+        throw new Error('viewDocument should not be called');
       },
     };
 
@@ -224,6 +241,174 @@ describe('InteractiveRunner', () => {
     expect(await configStore.load()).toEqual({
       git_repository_url: remoteRepoUrl,
     });
+  });
+
+  it('catches CliError inside the interactive loop and displays it without exiting', async () => {
+    await configStore.save({ git_repository_url: remoteRepoUrl });
+
+    const projectDir = join(tempDir, 'uninitialized-project');
+    await mkdir(projectDir, { recursive: true });
+
+    const queuedActions = ['sync', 'exit'];
+    const writtenChunks: string[] = [];
+    const screen = new AlternateScreen({
+      isTTY: false,
+      write(chunk: string): boolean {
+        writtenChunks.push(chunk);
+        return true;
+      },
+    });
+
+    const stubPrompt: PromptService = {
+      async inputRepoUrl(): Promise<string> {
+        throw new Error('inputRepoUrl should not be called');
+      },
+      async inputDefaultRef(): Promise<string | undefined> {
+        throw new Error('inputDefaultRef should not be called');
+      },
+      async selectAction(): Promise<string> {
+        return queuedActions.shift() ?? 'exit';
+      },
+      async selectModules(): Promise<readonly string[]> {
+        throw new Error('selectModules should not be called');
+      },
+      async selectHarness(): Promise<string> {
+        throw new Error('selectHarness should not be called');
+      },
+      async resolveConflict(): Promise<ConflictResolution> {
+        throw new Error('resolveConflict should not be called');
+      },
+      async viewDocument(): Promise<void> {
+        throw new Error('viewDocument should not be called');
+      },
+    };
+
+    const outputFormatter = new OutputFormatter(false);
+    const runner = new InteractiveRunner(
+      configStore,
+      configCommand,
+      listCommand,
+      harnessRegistry,
+      stubPrompt,
+      initCommand,
+      syncCommand,
+      outputFormatter,
+      new SpecCommand(),
+      new DocumentViewer(stubPrompt, outputFormatter),
+      undefined,
+      screen,
+    );
+
+    const summary = await runner.run(projectDir);
+
+    expect(summary).toEqual([]);
+    expect(writtenChunks.join('')).toContain('ERROR');
+    expect(writtenChunks.join('')).toContain('.agkit.json');
+  });
+
+  it('opens the template specification inside the document viewer without exiting the session', async () => {
+    await configStore.save({ git_repository_url: remoteRepoUrl });
+
+    const specFilePath = join(tempDir, 'spec.md');
+    await writeFile(specFilePath, '# Template Spec\n\nLine two\n', 'utf8');
+
+    const queuedActions = ['spec', 'exit'];
+    const viewedDocs: DocumentViewOptions[] = [];
+
+    const stubPrompt: PromptService = {
+      async inputRepoUrl(): Promise<string> {
+        throw new Error('inputRepoUrl should not be called');
+      },
+      async inputDefaultRef(): Promise<string | undefined> {
+        throw new Error('inputDefaultRef should not be called');
+      },
+      async selectAction(): Promise<string> {
+        return queuedActions.shift() ?? 'exit';
+      },
+      async selectModules(): Promise<readonly string[]> {
+        throw new Error('selectModules should not be called');
+      },
+      async selectHarness(): Promise<string> {
+        throw new Error('selectHarness should not be called');
+      },
+      async resolveConflict(): Promise<ConflictResolution> {
+        throw new Error('resolveConflict should not be called');
+      },
+      async viewDocument(options: DocumentViewOptions): Promise<void> {
+        viewedDocs.push(options);
+      },
+    };
+
+    const outputFormatter = new OutputFormatter(false);
+    const runner = new InteractiveRunner(
+      configStore,
+      configCommand,
+      listCommand,
+      harnessRegistry,
+      stubPrompt,
+      initCommand,
+      syncCommand,
+      outputFormatter,
+      new SpecCommand(specFilePath, outputFormatter),
+      new DocumentViewer(stubPrompt, outputFormatter),
+    );
+
+    const summary = await runner.run(tempDir);
+
+    expect(summary).toEqual([]);
+    expect(viewedDocs).toEqual([
+      {
+        title: 'Template Repository Specification',
+        subtitle: 'docs/template-repository.md',
+        lines: ['# Template Spec', '', 'Line two'],
+      },
+    ]);
+  });
+
+  it('returns to the menu when a sub-prompt is cancelled and exits cleanly on main menu cancel', async () => {
+    await configStore.save({ git_repository_url: remoteRepoUrl });
+
+    let menuCallCount = 0;
+    const stubPrompt: PromptService = {
+      async inputRepoUrl(): Promise<string> {
+        throw new PromptCancelledError();
+      },
+      async inputDefaultRef(): Promise<string | undefined> {
+        throw new Error('inputDefaultRef should not be called');
+      },
+      async selectAction(): Promise<string> {
+        menuCallCount += 1;
+        if (menuCallCount === 1) {
+          return 'config';
+        }
+        throw new PromptCancelledError();
+      },
+      async selectModules(): Promise<readonly string[]> {
+        throw new Error('selectModules should not be called');
+      },
+      async selectHarness(): Promise<string> {
+        throw new Error('selectHarness should not be called');
+      },
+      async resolveConflict(): Promise<ConflictResolution> {
+        throw new Error('resolveConflict should not be called');
+      },
+      async viewDocument(): Promise<void> {
+        throw new Error('viewDocument should not be called');
+      },
+    };
+
+    const runner = new InteractiveRunner(
+      configStore,
+      configCommand,
+      listCommand,
+      harnessRegistry,
+      stubPrompt,
+      initCommand,
+      syncCommand,
+    );
+
+    await expect(runner.run(tempDir)).resolves.toEqual([]);
+    expect(menuCallCount).toBe(2);
   });
 
   it('exits cleanly when Exit is selected from the menu', async () => {
@@ -247,6 +432,9 @@ describe('InteractiveRunner', () => {
       },
       async resolveConflict(): Promise<ConflictResolution> {
         throw new Error('resolveConflict should not be called');
+      },
+      async viewDocument(): Promise<void> {
+        throw new Error('viewDocument should not be called');
       },
     };
 

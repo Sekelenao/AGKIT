@@ -6,6 +6,12 @@ export interface PromptChoice {
   readonly description?: string;
 }
 
+export interface DocumentViewOptions {
+  readonly title: string;
+  readonly subtitle?: string;
+  readonly lines: readonly string[];
+}
+
 export interface PromptService {
   selectAction(choices: readonly PromptChoice[]): Promise<string>;
   selectHarness(choices: readonly PromptChoice[]): Promise<string>;
@@ -13,4 +19,5 @@ export interface PromptService {
   resolveConflict(filePath: string): Promise<ConflictResolution>;
   inputRepoUrl(currentUrl?: string): Promise<string>;
   inputDefaultRef(currentRef?: string): Promise<string | undefined>;
+  viewDocument(options: DocumentViewOptions): Promise<void>;
 }
