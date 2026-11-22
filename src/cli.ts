@@ -17,6 +17,8 @@ import { AntigravityHarness } from './harness/antigravity/antigravity-harness.js
 import { BobHarness } from './harness/bob/bob-harness.js';
 import { ClaudeHarness } from './harness/claude/claude-harness.js';
 import { CodexHarness } from './harness/codex/codex-harness.js';
+import { CopilotHarness } from './harness/copilot/copilot-harness.js';
+import { CursorHarness } from './harness/cursor/cursor-harness.js';
 import { HarnessRegistry } from './harness/harness-registry.js';
 import { OpencodeHarness } from './harness/opencode/opencode-harness.js';
 import { InteractiveRunner } from './interactive/interactive-runner.js';
@@ -49,6 +51,8 @@ const harnessRegistry = new HarnessRegistry([
   new AntigravityHarness(),
   new ClaudeHarness(),
   new CodexHarness(),
+  new CopilotHarness(),
+  new CursorHarness(),
   new BobHarness(),
 ]);
 

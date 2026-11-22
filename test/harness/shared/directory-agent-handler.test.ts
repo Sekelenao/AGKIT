@@ -69,4 +69,25 @@ describe('DirectoryAgentHandler', () => {
       readFile(join(tempDir, '.agents', 'agents', 'architect.md'), 'utf8'),
     ).resolves.toContain('\n\nv2\n');
   });
+
+  it('supports a custom agent file extension such as .agent.md', async () => {
+    const handler = new DirectoryAgentHandler(join('.github', 'agents'), '.agent.md');
+
+    const written = await handler.writeAll(tempDir, [
+      {
+        name: 'security-auditor',
+        displayName: 'Security Auditor',
+        description: 'Audits security boundaries',
+        capabilities: ['read'],
+        prompt: '# Security Auditor',
+      },
+    ]);
+
+    expect(written[0]?.relativePath).toBe(
+      join('.github', 'agents', 'security-auditor.agent.md'),
+    );
+    await expect(
+      readFile(join(tempDir, '.github', 'agents', 'security-auditor.agent.md'), 'utf8'),
+    ).resolves.toContain('name: security-auditor');
+  });
 });

@@ -6,6 +6,8 @@ import { AntigravityHarness } from '../../src/harness/antigravity/antigravity-ha
 import { BobHarness } from '../../src/harness/bob/bob-harness.js';
 import { ClaudeHarness } from '../../src/harness/claude/claude-harness.js';
 import { CodexHarness } from '../../src/harness/codex/codex-harness.js';
+import { CopilotHarness } from '../../src/harness/copilot/copilot-harness.js';
+import { CursorHarness } from '../../src/harness/cursor/cursor-harness.js';
 import type { Harness } from '../../src/harness/harness.js';
 import { OpencodeHarness } from '../../src/harness/opencode/opencode-harness.js';
 
@@ -53,6 +55,20 @@ describe('Harness default handlers', () => {
       createHarness: () => new CodexHarness(),
       expectedSkillPath: join('.agents', 'skills', 'testing', 'SKILL.md'),
       expectedAgentPath: join('.codex', 'agents', 'reviewer.md'),
+      expectedRootInstructionsPath: 'AGENTS.md',
+    },
+    {
+      label: 'CopilotHarness',
+      createHarness: () => new CopilotHarness(),
+      expectedSkillPath: join('.github', 'skills', 'testing', 'SKILL.md'),
+      expectedAgentPath: join('.github', 'agents', 'reviewer.agent.md'),
+      expectedRootInstructionsPath: join('.github', 'copilot-instructions.md'),
+    },
+    {
+      label: 'CursorHarness',
+      createHarness: () => new CursorHarness(),
+      expectedSkillPath: join('.cursor', 'skills', 'testing', 'SKILL.md'),
+      expectedAgentPath: join('.cursor', 'agents', 'reviewer.md'),
       expectedRootInstructionsPath: 'AGENTS.md',
     },
     {

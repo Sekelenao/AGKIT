@@ -6,14 +6,16 @@ import type { RenderedFile } from '../rendered-file.js';
 
 export class DirectoryAgentHandler implements AgentHandler {
   private readonly agentsRootDir: string;
+  private readonly fileExtension: string;
 
-  constructor(agentsRootDir: string) {
+  constructor(agentsRootDir: string, fileExtension = '.md') {
     this.agentsRootDir = agentsRootDir;
+    this.fileExtension = fileExtension;
   }
 
   render(agents: readonly TemplateAgent[]): readonly RenderedFile[] {
     return agents.map((agent) => ({
-      relativePath: join(this.agentsRootDir, `${agent.name}.md`),
+      relativePath: join(this.agentsRootDir, `${agent.name}${this.fileExtension}`),
       content: this.formatAgentMarkdown(agent),
     }));
   }

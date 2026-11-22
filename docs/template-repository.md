@@ -90,11 +90,15 @@ Inside `modules/<module-id>/`, all artifact directories and files are optional e
 
 Modules are **100% harness-agnostic**. Each harness adapter translates the canonical domain models (`TemplateSkill`, `TemplateAgent`, `rootInstructions`) into its native format and paths:
 
-| Artifact | OpenCode (`opencode`) | Antigravity (`antigravity` / `agy`) | Claude Code (`claude`) | OpenAI Codex (`codex`) | IBM Bob (`bob`) |
-| --- | --- | --- | --- | --- | --- |
-| `ROOT.md` | `AGENTS.md` | `AGENTS.md` | `CLAUDE.md` | `AGENTS.md` | `AGENTS.md` |
-| `skills/<id>/` | `.opencode/skills/<id>/` | `.agents/skills/<id>/` | `.claude/skills/<id>/` | `.agents/skills/<id>/` | `.bob/skills/<id>/` |
-| `agents/<id>/` | `.opencode/agents/<id>.md` | `.agents/agents/<id>.md` | `.claude/agents/<id>.md` | `.codex/agents/<id>.md` | `.bob/custom_modes.yaml` |
+| Harness | Root instructions (`ROOT.md`) | Skills (`skills/<id>/`) | Agents (`agents/<id>/`) |
+| --- | --- | --- | --- |
+| OpenCode (`opencode`) | `AGENTS.md` | `.opencode/skills/<id>/` | `.opencode/agents/<id>.md` |
+| Antigravity (`antigravity` / `agy`) | `AGENTS.md` | `.agents/skills/<id>/` | `.agents/agents/<id>.md` |
+| Claude Code (`claude`) | `CLAUDE.md` | `.claude/skills/<id>/` | `.claude/agents/<id>.md` |
+| OpenAI Codex (`codex`) | `AGENTS.md` | `.agents/skills/<id>/` | `.codex/agents/<id>.md` |
+| GitHub Copilot (`copilot`) | `.github/copilot-instructions.md` | `.github/skills/<id>/` | `.github/agents/<id>.agent.md` |
+| Cursor (`cursor`) | `AGENTS.md` | `.cursor/skills/<id>/` | `.cursor/agents/<id>.md` |
+| IBM Bob (`bob`) | `AGENTS.md` | `.bob/skills/<id>/` | `.bob/custom_modes.yaml` |
 
 ## 4. Composition Rules
 
