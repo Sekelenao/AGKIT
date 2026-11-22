@@ -127,6 +127,8 @@ describe('SyncCommand', () => {
       moduleComposer,
       manifestStore,
       contentHasher,
+      undefined,
+      () => new Date(2026, 10, 22, 19, 38, 47),
     );
     fixture = await createTemplateRemoteRepo(tempDir);
     await configStore.save({ git_repository_url: fixture.remoteDir });
@@ -243,12 +245,30 @@ describe('SyncCommand', () => {
         upstreamContent: '# Base v2\n',
       },
     ]);
-    expect(result.backedUpFiles).toEqual(['AGENTS.md.bak']);
+    expect(result.backedUpFiles).toEqual(['AGENTS.md.20261122-193847.bak']);
     expect(result.updatedFiles).toEqual(['AGENTS.md']);
     expect(result.keptConflictFiles).toEqual([]);
-    await expect(readFile(join(projectDir, 'AGENTS.md.bak'), 'utf8')).resolves.toBe(
-      '# Local edits\n',
-    );
+    await expect(
+      readFile(join(projectDir, 'AGENTS.md.20261122-193847.bak'), 'utf8'),
+    ).resolves.toBe('# Local edits\n');
     await expect(readFile(join(projectDir, 'AGENTS.md'), 'utf8')).resolves.toBe('# Base v2\n');
+
+    // A second backup at the same timestamp must not overwrite the existing backup
+    await writeFile(join(projectDir, 'AGENTS.md'), '# Second local edits\n', 'utf8');
+    await writeFile(join(fixture.workDir, 'modules', 'base', 'ROOT.md'), '# Base v3\n', 'utf8');
+    await fixture.commitAndPush('v3');
+
+    const secondResult = await syncCommand.execute({
+      targetDir: projectDir,
+      resolveConflict: async () => 'backup',
+    });
+
+    expect(secondResult.backedUpFiles).toEqual(['AGENTS.md.20261122-193847-1.bak']);
+    await expect(
+      readFile(join(projectDir, 'AGENTS.md.20261122-193847.bak'), 'utf8'),
+    ).resolves.toBe('# Local edits\n');
+    await expect(
+      readFile(join(projectDir, 'AGENTS.md.20261122-193847-1.bak'), 'utf8'),
+    ).resolves.toBe('# Second local edits\n');
   });
 });

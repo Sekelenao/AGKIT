@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve, sep } from 'node:path';
 import type { Command } from 'commander';
 import type { GitRepositoryCache } from '../../git/git-repository-cache.js';
@@ -55,6 +55,7 @@ export class SyncCommand implements CliCommand {
   private readonly manifestStore: ProjectManifestStore;
   private readonly contentHasher: ContentHasher;
   private readonly outputFormatter: OutputFormatter;
+  private readonly now: () => Date;
 
   constructor(
     harnessRegistry: HarnessRegistry,
@@ -64,6 +65,7 @@ export class SyncCommand implements CliCommand {
     manifestStore: ProjectManifestStore,
     contentHasher: ContentHasher,
     outputFormatter: OutputFormatter = new OutputFormatter(false),
+    now: () => Date = () => new Date(),
   ) {
     this.harnessRegistry = harnessRegistry;
     this.repositoryCache = repositoryCache;
@@ -72,6 +74,7 @@ export class SyncCommand implements CliCommand {
     this.manifestStore = manifestStore;
     this.contentHasher = contentHasher;
     this.outputFormatter = outputFormatter;
+    this.now = now;
   }
 
   register(program: Command): void {
@@ -151,7 +154,7 @@ export class SyncCommand implements CliCommand {
         updatedFiles.push(posixPath);
         nextManagedFiles[posixPath] = desired.hash;
       } else if (resolution === 'backup') {
-        const backupPath = `${posixPath}.bak`;
+        const backupPath = await this.allocateBackupPath(options.targetDir, posixPath);
         await this.writeLocalFile(options.targetDir, backupPath, localContent);
         await this.writeLocalFile(options.targetDir, posixPath, desired.content);
         backedUpFiles.push(backupPath);
@@ -191,7 +194,7 @@ export class SyncCommand implements CliCommand {
         await this.deleteLocalFile(options.targetDir, posixPath);
         deletedFiles.push(posixPath);
       } else if (resolution === 'backup') {
-        const backupPath = `${posixPath}.bak`;
+        const backupPath = await this.allocateBackupPath(options.targetDir, posixPath);
         await this.writeLocalFile(options.targetDir, backupPath, localContent);
         await this.deleteLocalFile(options.targetDir, posixPath);
         backedUpFiles.push(backupPath);
@@ -269,6 +272,46 @@ export class SyncCommand implements CliCommand {
       return options.resolveConflict(conflict);
     }
     return 'keep';
+  }
+
+  private async allocateBackupPath(targetDir: string, posixPath: string): Promise<string> {
+    const stamp = this.formatTimestamp(this.now());
+    const baseCandidate = `${posixPath}.${stamp}.bak`;
+    if (!(await this.localPathExists(targetDir, baseCandidate))) {
+      return baseCandidate;
+    }
+
+    let suffix = 1;
+    while (true) {
+      const candidate = `${posixPath}.${stamp}-${suffix}.bak`;
+      if (!(await this.localPathExists(targetDir, candidate))) {
+        return candidate;
+      }
+      suffix += 1;
+    }
+  }
+
+  private formatTimestamp(date: Date): string {
+    const pad = (value: number): string => String(value).padStart(2, '0');
+    const year = date.getFullYear();
+    const month = pad(date.getMonth() + 1);
+    const day = pad(date.getDate());
+    const hours = pad(date.getHours());
+    const minutes = pad(date.getMinutes());
+    const seconds = pad(date.getSeconds());
+    return `${year}${month}${day}-${hours}${minutes}${seconds}`;
+  }
+
+  private async localPathExists(targetDir: string, posixPath: string): Promise<boolean> {
+    try {
+      await access(this.toAbsolutePath(targetDir, posixPath));
+      return true;
+    } catch (error: unknown) {
+      if (this.isNotFoundError(error)) {
+        return false;
+      }
+      throw error;
+    }
   }
 
   private toPosixPath(relativePath: string): string {
