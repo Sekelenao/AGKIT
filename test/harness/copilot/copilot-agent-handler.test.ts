@@ -2,9 +2,10 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { CopilotAgentHandler } from '../../../src/harness/copilot/copilot-agent-handler.js';
+import { CopilotHarness } from '../../../src/harness/copilot/copilot-harness.js';
 
-describe('CopilotAgentHandler', () => {
+describe('CopilotHarness agent rendering', () => {
+  const handler = new CopilotHarness().agents;
   let tempDir: string;
 
   beforeEach(async () => {
@@ -16,7 +17,6 @@ describe('CopilotAgentHandler', () => {
   });
 
   it('writes .agent.md files with deduplicated Copilot tools mapped from capabilities', async () => {
-    const handler = new CopilotAgentHandler();
 
     const written = await handler.writeAll(tempDir, [
       {
@@ -50,8 +50,6 @@ describe('CopilotAgentHandler', () => {
   });
 
   it('omits tools whitelist when all capabilities are granted', () => {
-    const handler = new CopilotAgentHandler();
-
     const rendered = handler.render([
       {
         name: 'builder',

@@ -2,9 +2,10 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { ClaudeAgentHandler } from '../../../src/harness/claude/claude-agent-handler.js';
+import { ClaudeHarness } from '../../../src/harness/claude/claude-harness.js';
 
-describe('ClaudeAgentHandler', () => {
+describe('ClaudeHarness agent rendering', () => {
+  const handler = new ClaudeHarness().agents;
   let tempDir: string;
 
   beforeEach(async () => {
@@ -16,7 +17,6 @@ describe('ClaudeAgentHandler', () => {
   });
 
   it('maps omitted capabilities to disallowedTools and renders bare skill IDs', async () => {
-    const handler = new ClaudeAgentHandler();
 
     const written = await handler.writeAll(tempDir, [
       {
@@ -54,8 +54,6 @@ describe('ClaudeAgentHandler', () => {
   });
 
   it('omits disallowedTools when all capabilities are granted', () => {
-    const handler = new ClaudeAgentHandler();
-
     const rendered = handler.render([
       {
         name: 'builder',

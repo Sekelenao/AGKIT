@@ -2,9 +2,10 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { OpencodeAgentHandler } from '../../../src/harness/opencode/opencode-agent-handler.js';
+import { OpencodeHarness } from '../../../src/harness/opencode/opencode-harness.js';
 
-describe('OpencodeAgentHandler', () => {
+describe('OpencodeHarness agent rendering', () => {
+  const handler = new OpencodeHarness().agents;
   let tempDir: string;
 
   beforeEach(async () => {
@@ -16,7 +17,6 @@ describe('OpencodeAgentHandler', () => {
   });
 
   it('renders mode and denied permissions for omitted capabilities', async () => {
-    const handler = new OpencodeAgentHandler();
 
     const written = await handler.writeAll(tempDir, [
       {
@@ -52,8 +52,6 @@ describe('OpencodeAgentHandler', () => {
   });
 
   it('omits permission block when all capabilities are granted', () => {
-    const handler = new OpencodeAgentHandler();
-
     const rendered = handler.render([
       {
         name: 'builder',

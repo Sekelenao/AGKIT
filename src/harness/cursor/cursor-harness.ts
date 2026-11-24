@@ -3,9 +3,10 @@ import type { AgentHandler } from '../agent-handler.js';
 import type { Harness } from '../harness.js';
 import type { RootInstructionsHandler } from '../root-instructions-handler.js';
 import { DirectorySkillHandler } from '../shared/directory-skill-handler.js';
+import { MarkdownAgentHandler } from '../shared/markdown-agent-handler.js';
 import { SingleFileRootInstructionsHandler } from '../shared/single-file-root-instructions-handler.js';
 import type { SkillHandler } from '../skill-handler.js';
-import { CursorAgentHandler } from './cursor-agent-handler.js';
+import { CursorAgentFormatter } from './cursor-agent-formatter.js';
 
 export class CursorHarness implements Harness {
   readonly name = 'cursor';
@@ -17,7 +18,10 @@ export class CursorHarness implements Harness {
 
   constructor(
     skills: SkillHandler = new DirectorySkillHandler(join('.cursor', 'skills')),
-    agents: AgentHandler = new CursorAgentHandler(),
+    agents: AgentHandler = new MarkdownAgentHandler(
+      join('.cursor', 'agents'),
+      new CursorAgentFormatter(),
+    ),
     rootInstructions: RootInstructionsHandler = new SingleFileRootInstructionsHandler('AGENTS.md'),
   ) {
     this.skills = skills;

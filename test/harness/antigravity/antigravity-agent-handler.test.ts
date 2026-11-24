@@ -2,9 +2,10 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { AntigravityAgentHandler } from '../../../src/harness/antigravity/antigravity-agent-handler.js';
+import { AntigravityHarness } from '../../../src/harness/antigravity/antigravity-harness.js';
 
-describe('AntigravityAgentHandler', () => {
+describe('AntigravityHarness agent rendering', () => {
+  const handler = new AntigravityHarness().agents;
   let tempDir: string;
 
   beforeEach(async () => {
@@ -16,7 +17,6 @@ describe('AntigravityAgentHandler', () => {
   });
 
   it('maps capabilities to deduplicated tools, mode flags, and skills paths', async () => {
-    const handler = new AntigravityAgentHandler();
 
     const written = await handler.writeAll(tempDir, [
       {
@@ -68,8 +68,6 @@ describe('AntigravityAgentHandler', () => {
     { mode: 'subagent', expectedSubagent: 'subagent: true', expectedMainAgent: 'mainAgent: false' },
     { mode: 'primary', expectedSubagent: 'subagent: false', expectedMainAgent: 'mainAgent: true' },
   ])('renders $mode mode flags accurately', ({ mode, expectedSubagent, expectedMainAgent }) => {
-    const handler = new AntigravityAgentHandler();
-
     const rendered = handler.render([
       {
         name: 'helper',
@@ -89,8 +87,6 @@ describe('AntigravityAgentHandler', () => {
   });
 
   it('omits tools whitelist when all capabilities are granted', () => {
-    const handler = new AntigravityAgentHandler();
-
     const rendered = handler.render([
       {
         name: 'generalist',

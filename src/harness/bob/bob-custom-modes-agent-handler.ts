@@ -1,9 +1,9 @@
-import { mkdir, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import type { AgentCapability } from '../../template/agent-manifest.js';
 import type { TemplateAgent } from '../../template/template-module.js';
 import type { AgentHandler } from '../agent-handler.js';
 import type { RenderedFile } from '../rendered-file.js';
+import { RenderedFileWriter } from '../shared/rendered-file-writer.js';
 
 const DEFAULT_CUSTOM_MODES_PATH = join('.bob', 'custom_modes.yaml');
 
@@ -17,9 +17,14 @@ const BOB_GROUP_MAP: Readonly<Record<AgentCapability, string>> = {
 
 export class BobCustomModesAgentHandler implements AgentHandler {
   private readonly relativeFilePath: string;
+  private readonly fileWriter: RenderedFileWriter;
 
-  constructor(relativeFilePath: string = DEFAULT_CUSTOM_MODES_PATH) {
+  constructor(
+    relativeFilePath: string = DEFAULT_CUSTOM_MODES_PATH,
+    fileWriter: RenderedFileWriter = new RenderedFileWriter(),
+  ) {
     this.relativeFilePath = relativeFilePath;
+    this.fileWriter = fileWriter;
   }
 
   render(agents: readonly TemplateAgent[]): readonly RenderedFile[] {
@@ -62,14 +67,6 @@ export class BobCustomModesAgentHandler implements AgentHandler {
     targetDir: string,
     agents: readonly TemplateAgent[],
   ): Promise<readonly RenderedFile[]> {
-    const rendered = this.render(agents);
-
-    for (const file of rendered) {
-      const absolute = join(targetDir, file.relativePath);
-      await mkdir(dirname(absolute), { recursive: true });
-      await writeFile(absolute, file.content, 'utf8');
-    }
-
-    return rendered;
+    return this.fileWriter.writeAll(targetDir, this.render(agents));
   }
 }
