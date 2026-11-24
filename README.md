@@ -2,7 +2,7 @@
 
 **Harness-agnostic CLI for distributing and syncing AI engineering templates across projects and teams.**
 
-Write your root instructions, skills, and specialized agents **once** in a central Git repository using plain JSON + Markdown, then apply and synchronize them cleanly across **OpenCode**, **Antigravity**, **Claude Code**, **OpenAI Codex**, **GitHub Copilot**, **Cursor**, and **IBM Bob** — without overwriting project-specific files.
+Write your root instructions, skills, and specialized agents **once** in a central Git repository using plain JSON + Markdown, then apply and synchronize them cleanly across **OpenCode**, **Antigravity CLI**, **Claude Code**, **OpenAI Codex**, **GitHub Copilot**, **Cursor**, and **IBM Bob** — without overwriting project-specific files.
 
 ![AGKIT interactive menu](https://raw.githubusercontent.com/Sekelenao/AGKIT/main/docs/assets/interactive-menu.svg)
 
@@ -24,9 +24,9 @@ Write your root instructions, skills, and specialized agents **once** in a centr
 | Harness | `--harness` | Root (`ROOT.md`) | Skills (`skills/<id>/`) | Agents (`agents/<id>/`) |
 | --- | --- | --- | --- | --- |
 | OpenCode | `opencode` | `AGENTS.md` | `.opencode/skills/<id>/` | `.opencode/agents/<id>.md` |
-| Antigravity | `antigravity`, `agy` | `AGENTS.md` | `.agents/skills/<id>/` | `.agents/agents/<id>.md` |
+| Antigravity CLI | `antigravity`, `agy` | `AGENTS.md` | `.agents/skills/<id>/` | `.agents/agents/<id>.md` |
 | Claude Code | `claude` | `CLAUDE.md` | `.claude/skills/<id>/` | `.claude/agents/<id>.md` |
-| OpenAI Codex | `codex` | `AGENTS.md` | `.agents/skills/<id>/` | `.codex/agents/<id>.md` |
+| OpenAI Codex | `codex` | `AGENTS.md` | `.agents/skills/<id>/` | `.codex/agents/<id>.toml` |
 | GitHub Copilot | `copilot` | `.github/copilot-instructions.md` | `.github/skills/<id>/` | `.github/agents/<id>.agent.md` |
 | Cursor | `cursor` | `AGENTS.md` | `.cursor/skills/<id>/` | `.cursor/agents/<id>.md` |
 | IBM Bob | `bob` | `AGENTS.md` | `.bob/skills/<id>/` | `.bob/custom_modes.yaml` |

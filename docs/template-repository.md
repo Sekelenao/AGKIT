@@ -72,7 +72,9 @@ All IDs (`<module-id>`, `<skill-id>`, `<agent-id>`) are derived from their direc
 | `display_name` | `string` (non-empty) | Yes | Human-readable agent/mode name. |
 | `description` | `string` (non-empty) | Yes | Short summary of the agent's role. |
 | `when_to_use` | `string` (non-empty) | No | Guidance for when the harness should invoke/suggest this agent (defaults to `description`). |
-| `capabilities` | `AgentCapability[]` | No | Internal capability enum: `"read"`, `"edit"`, `"execute"`, `"skill"`, `"subagent"`. Defaults to all capabilities. |
+| `mode` | `"subagent" \| "primary" \| "all"` | No | Execution role for harnesses that distinguish primary and subagent modes (e.g. OpenCode `mode`, Antigravity `subagent`/`mainAgent`). |
+| `capabilities` | `AgentCapability[]` | No | Internal capability enum: `"read"`, `"edit"`, `"execute"`, `"skill"`, `"subagent"`. Defaults to all capabilities. Mapped to native tools/permissions per harness. |
+| `skills` | `string[]` (kebab-case skill IDs) | No | Optional list of skill IDs attached to the agent (rendered by harnesses that support explicit agent skill declarations such as Antigravity and Claude Code). |
 | `file_regex` | `string` (non-empty) | No | Optional file path regex restriction (used by harnesses that support file scoping such as IBM Bob). |
 
 ## 3. Module Content Structure
@@ -93,9 +95,9 @@ Modules are **100% harness-agnostic**. Each harness adapter translates the canon
 | Harness | `--harness` | Root (`ROOT.md`) | Skills (`skills/<id>/`) | Agents (`agents/<id>/`) |
 | --- | --- | --- | --- | --- |
 | OpenCode | `opencode` | `AGENTS.md` | `.opencode/skills/<id>/` | `.opencode/agents/<id>.md` |
-| Antigravity | `antigravity`, `agy` | `AGENTS.md` | `.agents/skills/<id>/` | `.agents/agents/<id>.md` |
+| Antigravity CLI | `antigravity`, `agy` | `AGENTS.md` | `.agents/skills/<id>/` | `.agents/agents/<id>.md` |
 | Claude Code | `claude` | `CLAUDE.md` | `.claude/skills/<id>/` | `.claude/agents/<id>.md` |
-| OpenAI Codex | `codex` | `AGENTS.md` | `.agents/skills/<id>/` | `.codex/agents/<id>.md` |
+| OpenAI Codex | `codex` | `AGENTS.md` | `.agents/skills/<id>/` | `.codex/agents/<id>.toml` |
 | GitHub Copilot | `copilot` | `.github/copilot-instructions.md` | `.github/skills/<id>/` | `.github/agents/<id>.agent.md` |
 | Cursor | `cursor` | `AGENTS.md` | `.cursor/skills/<id>/` | `.cursor/agents/<id>.md` |
 | IBM Bob | `bob` | `AGENTS.md` | `.bob/skills/<id>/` | `.bob/custom_modes.yaml` |

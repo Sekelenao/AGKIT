@@ -54,7 +54,9 @@ describe('TemplateRepositoryLoader', () => {
       JSON.stringify({
         display_name: 'Code Reviewer',
         description: 'Reviews pull requests',
+        mode: 'subagent',
         capabilities: ['read', 'skill'],
+        skills: ['git'],
       }),
     );
     await writeRepoFile(
@@ -95,7 +97,9 @@ describe('TemplateRepositoryLoader', () => {
             name: 'reviewer',
             displayName: 'Code Reviewer',
             description: 'Reviews pull requests',
+            mode: 'subagent',
             capabilities: ['read', 'skill'],
+            skills: ['git'],
             prompt: '# Reviewer\n',
           },
         ],
@@ -187,6 +191,28 @@ describe('TemplateRepositoryLoader', () => {
       repoDir,
       join('modules', 'base', 'agents', 'reviewer', 'PROMPT.md'),
       '# Reviewer\n',
+    );
+    await expect(loader.loadAll(repoDir)).rejects.toThrow(TemplateRepositoryError);
+
+    await writeRepoFile(
+      repoDir,
+      join('modules', 'base', 'agents', 'reviewer', 'agent.json'),
+      JSON.stringify({
+        display_name: 'Reviewer',
+        description: 'Reviews code',
+        mode: 'invalid-mode',
+      }),
+    );
+    await expect(loader.loadAll(repoDir)).rejects.toThrow(TemplateRepositoryError);
+
+    await writeRepoFile(
+      repoDir,
+      join('modules', 'base', 'agents', 'reviewer', 'agent.json'),
+      JSON.stringify({
+        display_name: 'Reviewer',
+        description: 'Reviews code',
+        skills: ['Not_Kebab'],
+      }),
     );
     await expect(loader.loadAll(repoDir)).rejects.toThrow(TemplateRepositoryError);
 

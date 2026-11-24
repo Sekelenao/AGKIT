@@ -54,7 +54,7 @@ describe('Harness default handlers', () => {
       label: 'CodexHarness',
       createHarness: () => new CodexHarness(),
       expectedSkillPath: join('.agents', 'skills', 'testing', 'SKILL.md'),
-      expectedAgentPath: join('.codex', 'agents', 'reviewer.md'),
+      expectedAgentPath: join('.codex', 'agents', 'reviewer.toml'),
       expectedRootInstructionsPath: 'AGENTS.md',
     },
     {

@@ -172,7 +172,7 @@ describe('InteractiveRunner', () => {
     expect(capturedModules.map((c) => c.value)).toEqual(['base']);
     expect(capturedHarnesses.map((c) => c.label)).toEqual([
       'OpenCode',
-      'Antigravity',
+      'Antigravity CLI',
     ]);
 
     expect(await readFile(join(projectDir, 'AGENTS.md'), 'utf8')).toBe('# Base Guide\n');

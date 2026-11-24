@@ -4,18 +4,18 @@ import type { TemplateAgent } from '../../template/template-module.js';
 import type { AgentHandler } from '../agent-handler.js';
 import type { RenderedFile } from '../rendered-file.js';
 
-export class DirectoryAgentHandler implements AgentHandler {
-  private readonly agentsRootDir: string;
-  private readonly fileExtension: string;
+const DEFAULT_CURSOR_AGENTS_DIR = join('.cursor', 'agents');
 
-  constructor(agentsRootDir: string, fileExtension = '.md') {
+export class CursorAgentHandler implements AgentHandler {
+  private readonly agentsRootDir: string;
+
+  constructor(agentsRootDir: string = DEFAULT_CURSOR_AGENTS_DIR) {
     this.agentsRootDir = agentsRootDir;
-    this.fileExtension = fileExtension;
   }
 
   render(agents: readonly TemplateAgent[]): readonly RenderedFile[] {
     return agents.map((agent) => ({
-      relativePath: join(this.agentsRootDir, `${agent.name}${this.fileExtension}`),
+      relativePath: join(this.agentsRootDir, `${agent.name}.md`),
       content: this.formatAgentMarkdown(agent),
     }));
   }
@@ -41,8 +41,13 @@ export class DirectoryAgentHandler implements AgentHandler {
       '---',
       `name: ${agent.name}`,
       `description: ${JSON.stringify(agent.description)}`,
-      '---',
     ];
+
+    if (!agent.capabilities.includes('edit')) {
+      frontmatterLines.push('readonly: true');
+    }
+
+    frontmatterLines.push('---');
 
     const frontmatter = frontmatterLines.join('\n');
     return body.length > 0 ? `${frontmatter}\n\n${body}\n` : `${frontmatter}\n`;

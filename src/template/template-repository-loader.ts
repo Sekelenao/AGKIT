@@ -188,7 +188,9 @@ export class TemplateRepositoryLoader {
         ...(manifest.when_to_use === undefined
           ? {}
           : { whenToUse: manifest.when_to_use }),
+        ...(manifest.mode === undefined ? {} : { mode: manifest.mode }),
         capabilities: manifest.capabilities,
+        ...(manifest.skills === undefined ? {} : { skills: manifest.skills }),
         ...(manifest.file_regex === undefined ? {} : { fileRegex: manifest.file_regex }),
         prompt,
       });
