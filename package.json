@@ -1,6 +1,6 @@
 {
   "name": "@sekelenao/agkit-cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "CLI for managing enterprise AI harness templates",
   "license": "Apache-2.0",
   "author": "Sekelenao",
@@ -36,13 +36,14 @@
   "files": [
     "dist",
     "docs/template-repository.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "build": "tsc && node -e \"import('node:fs').then(fs => fs.chmodSync('dist/cli.js', 0o755))\"",
+    "build": "node -e \"import('node:fs').then(fs => fs.rmSync('dist', { recursive: true, force: true }))\" && tsc && node -e \"import('node:fs').then(fs => fs.chmodSync('dist/cli.js', 0o755))\"",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "prepublishOnly": "npm run typecheck && npm run build && npm test"

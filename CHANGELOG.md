@@ -12,7 +12,7 @@ All notable user-facing changes to this project are documented in this file.
 
 ---
 
-## [Unreleased]
+## [0.2.0]
 
 ### 🟢 Features & Enhancements
 - **Optional `mode` & `skills` Fields in `agent.json`**: Added optional `mode` (`"subagent" | "primary" | "all"`) and `skills` (`string[]` of lowercase kebab-case skill IDs) to the agent manifest schema, validated fail-fast with Zod.
